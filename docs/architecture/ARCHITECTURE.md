@@ -7,7 +7,7 @@ created: 2026-04-05
 # Architecture
 
 ## Overview
-Advisor Armor is a standard Electron application with three layers: main process, preload bridge, and renderer. The main process owns all privileged operations (OS API calls, scheduling, file I/O, backend API calls). The renderer displays scan results. A preload script exposes a controlled IPC surface between the two.
+DeviceWatch is a standard Electron application with three layers: main process, preload bridge, and renderer. The main process owns all privileged operations (OS API calls, scheduling, file I/O, backend API calls). The renderer displays scan results. A preload script exposes a controlled IPC surface between the two.
 
 ## Process Model
 

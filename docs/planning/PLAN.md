@@ -8,7 +8,7 @@ deprecated: ~
 # Project Plan
 
 ## Purpose
-Advisor Armor is a desktop security compliance application that runs on employee machines (Mac and Windows). It scans the device against an organisation's security policy and reports results to both the user and a backend API. It helps organisations ensure employee devices meet their security standards without requiring IT to manually audit machines.
+DeviceWatch is a desktop compliance monitoring application that runs on employee machines (Mac and Windows). It scans the device against an organisation's security policy on demand and monitors for changes (e.g. connecting to an unsecure WiFi network), alerting the user when issues are detected. Results are reported to both the user and a backend API. It helps organisations ensure employee devices meet their security standards without requiring IT to manually audit machines.
 
 ## Target Users
 - **End users** — employees who run the app on their machines and see their scan results

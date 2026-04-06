@@ -4,7 +4,7 @@ This file is auto-loaded by Claude Code at the start of every session.
 Use it as the entry point to all project context.
 
 ## Project
-Advisor Armor vNext — an Electron desktop application.
+DeviceWatch — an Electron desktop compliance monitoring application (Mac + Windows).
 See `docs/planning/PLAN.md` for current status and active goals.
 
 ## Docs Structure
