@@ -44,7 +44,7 @@ The primary screen. Shown after scan completes and on tray icon click.
 - Blue background, white text
 - Four tabs: **Scan** | **Training** | **Report** | **News**
 - Scan tab active by default; underlined when active
-- Other tabs present but content added progressively
+- `Training`, `Report`, and `News` are placeholder panels in v1 and may show simple "Coming soon" content
 
 #### Device Header
 - Light grey background bar

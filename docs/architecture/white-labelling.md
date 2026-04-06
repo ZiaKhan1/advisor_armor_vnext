@@ -9,6 +9,10 @@ deprecated: ~
 
 DeviceWatch is designed to be adopted by a single organisation. The codebase is generic by default (mock mode) and all organisation-specific values are committed in one config file that is switched in at build time.
 
+Use `DeviceWatch` for generic code, docs, and architecture naming. Use client-specific names such as `AdvisorArmor` only where branding or backend contracts require them.
+
+Within the codebase, prefer generic names for shared concepts. For example, keep version data as `appVersion` internally and map it to the backend field `advisorArmorVersion` only when constructing API requests.
+
 ## Principle
 
 - The base application runs in **mock mode** out of the box — no backend required
@@ -27,10 +31,10 @@ Single file, committed to the repo. Contains all configurable values:
 export const config = {
   mockMode: import.meta.env.VITE_MOCK_MODE === 'true',
   apiBaseUrl: 'https://api.acme.com/devicewatch',
-  appName: 'Acme Security Monitor',
+  appName: 'AdvisorArmor',
   supportEmail: 'it@acme.com',
   troubleshootingUrl: 'https://acme.com/it/help',
-  mockOtpCode: '123456',
+  mockOtpCode: '1234',
 }
 ```
 
@@ -68,7 +72,7 @@ Mock responses are defined alongside the service, not in config.
 
 ## OTP Verification in Mock Mode
 
-When `mockMode` is `true`, the OTP email step accepts `config.mockOtpCode` as the valid code (default: `123456`). No email is sent.
+When `mockMode` is `true`, the OTP email step accepts `config.mockOtpCode` as the valid code (default: `1234`). No email is sent.
 
 ## Testing
 

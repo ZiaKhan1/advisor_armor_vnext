@@ -18,6 +18,8 @@ The onboarding sequence involves three sequential API calls:
 
 > **Note:** `waitForInternet()` is called before Validate Email to handle auto-launch on startup where the network may not be immediately available.
 
+> **Naming note:** `advisorArmorVersion` is the current backend contract field name. Inside the app, prefer generic names such as `appVersion`, and map them to `advisorArmorVersion` at the API boundary.
+
 ---
 
 ## Validate Email
@@ -25,14 +27,14 @@ The onboarding sequence involves three sequential API calls:
 **Method:** POST
 **Content-Type:** multipart/form-data
 **Endpoint:** `config.apiBaseUrl` + validate email path (configured in `src/config.ts`)
-**Auth:** None defined in v1 — to be confirmed
+**Auth:** None. Endpoints are accessible in v1.
 
 ### Request Body (FormData)
 
 | Field | Value | Notes |
 |---|---|---|
 | `email` | user's email | As entered by user |
-| `advisorArmorVersion` | app version | From `package.json` |
+| `advisorArmorVersion` | app version | Current backend contract field name. Internal code may refer to this value as `appVersion` before mapping it into the request body. |
 
 ### Response
 
@@ -54,7 +56,7 @@ Return `{ "status": true }` for any email.
 **Method:** POST
 **Content-Type:** multipart/form-data
 **Endpoint:** `config.apiBaseUrl` + validate code path (configured in `src/config.ts`)
-**Auth:** None defined in v1 — to be confirmed
+**Auth:** None. Endpoints are accessible in v1.
 
 ### Request Body (FormData)
 
@@ -63,7 +65,7 @@ Return `{ "status": true }` for any email.
 | `type` | `"CHECK_CODE"` | Hardcoded constant |
 | `email` | user's email | |
 | `code` | 4-digit code | As entered by user |
-| `advisorArmorVersion` | app version | From `package.json` |
+| `advisorArmorVersion` | app version | Current backend contract field name. Internal code may refer to this value as `appVersion` before mapping it into the request body. |
 
 ### Response
 
@@ -76,7 +78,7 @@ Return `{ "status": true }` for any email.
 | `valid` | boolean | `true` = code is correct; `false` = code is wrong or expired |
 
 ### Mock Behaviour
-Return `{ "valid": true }` if submitted code matches `config.mockOtpCode` (default: `"123456"`); otherwise `{ "valid": false }`.
+Return `{ "valid": true }` if submitted code matches `config.mockOtpCode` (default: `"1234"`); otherwise `{ "valid": false }`.
 
 ---
 
@@ -85,7 +87,7 @@ Return `{ "valid": true }` if submitted code matches `config.mockOtpCode` (defau
 **Method:** POST
 **Content-Type:** multipart/form-data
 **Endpoint:** `config.apiBaseUrl` + check access path (configured in `src/config.ts`)
-**Auth:** None defined in v1 — to be confirmed
+**Auth:** None. Endpoints are accessible in v1.
 
 ### Request Body (FormData)
 
@@ -93,7 +95,7 @@ Return `{ "valid": true }` if submitted code matches `config.mockOtpCode` (defau
 |---|---|---|
 | `type` | `"CHECK_ACCESS"` | Hardcoded constant |
 | `email` | user's email | |
-| `advisorArmorVersion` | app version | From `package.json` |
+| `advisorArmorVersion` | app version | Current backend contract field name. Internal code may refer to this value as `appVersion` before mapping it into the request body. |
 
 ### Response
 
@@ -116,7 +118,7 @@ Return `{ "admin": false, "companyName": "Demo Company" }`.
 **Method:** POST
 **Content-Type:** multipart/form-data
 **Endpoint:** `config.apiBaseUrl` + policy path (configured in `src/config.ts`)
-**Auth:** None defined in v1 — to be confirmed
+**Auth:** None. Endpoints are accessible in v1.
 
 ### Request Body (FormData)
 
@@ -124,7 +126,7 @@ Return `{ "admin": false, "companyName": "Demo Company" }`.
 |---|---|---|
 | `type` | `"POLICY"` | Hardcoded constant |
 | `email` | user's email | From `storage/user.json` |
-| `advisorArmorVersion` | app version | From `package.json` |
+| `advisorArmorVersion` | app version | Current backend contract field name. Internal code may refer to this value as `appVersion` before mapping it into the request body. |
 
 ### Response
 
@@ -223,12 +225,12 @@ Return `{ "admin": false, "companyName": "Demo Company" }`.
 | `ScreenLockMac` | integer | ≥ 0 (seconds, 0 = Immediately) | Invalid = N/A = PASS |
 | `ScreenIdleWindows` | integer | ≥ 1 (seconds) | Invalid = N/A = PASS |
 | `ScreenLockWindows` | integer | 0 or 1 | Invalid = N/A = PASS |
-| `ApprovedVersionforMAC` | string | version string | TBD — see scan-logic.md |
-| `NudgedVersionforMAC` | string | version string | TBD — see scan-logic.md |
-| `ApprovedVersionforWindows10` | string | version string | TBD — see scan-logic.md |
-| `ApprovedVersionforWindowsNon-10.` | string | version string | TBD — see scan-logic.md |
-| `NudgedVersionforWindows10` | string | version string | TBD — see scan-logic.md |
-| `NudgedVersionforWindowsnon-10.` | string | version string | TBD — see scan-logic.md |
+| `ApprovedVersionforMAC` | string | version string | Compared using the OS version logic in `scan-logic.md` |
+| `NudgedVersionforMAC` | string | version string | Compared using the OS version logic in `scan-logic.md` |
+| `ApprovedVersionforWindows10` | string | version string | Compared using the OS version logic in `scan-logic.md` |
+| `ApprovedVersionforWindowsNon-10.` | string | version string | Compared using the OS version logic in `scan-logic.md` |
+| `NudgedVersionforWindows10` | string | version string | Compared using the OS version logic in `scan-logic.md` |
+| `NudgedVersionforWindowsnon-10.` | string | version string | Compared using the OS version logic in `scan-logic.md` |
 | `ScanIntervalHours` | integer | ≥ 1 | Default 24 if not set |
 | `ScanPage` | string | Yes/No | Whether to show scan UI |
 | `IsShowPIIScan` | string | Yes/No | Not implemented in v1 |
@@ -239,7 +241,7 @@ Return `{ "admin": false, "companyName": "Demo Company" }`.
 **Method:** POST
 **Content-Type:** application/json
 **Endpoint:** `config.apiBaseUrl` + submission path (configured in `src/config.ts`)
-**Auth:** None defined in v1 — to be confirmed
+**Auth:** None. Endpoints are accessible in v1.
 
 ### Payload Structure
 

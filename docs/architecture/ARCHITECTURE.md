@@ -42,7 +42,7 @@ Responsible for:
 
 ## Auto-Start
 - Always enabled — not user-configurable
-- On launch: app window opens immediately and scan begins
+- On launch: app window opens immediately, update checks run, then the scan flow begins
 - Mac: registered as LaunchAgent so it starts on user login
 - Windows: registered via startup registry key or Task Scheduler
 
@@ -53,8 +53,8 @@ Responsible for:
 - `autoDownload` is disabled — user must confirm before download starts
 
 ### Check Schedule
-- On launch — silent (no dialogs regardless of result)
-- Every 24 hours — silent
+- On launch — check immediately after startup
+- Regular interval — default 24 hours, manual configuration can be added later if needed
 - Manual — "Check for Update" in tray menu — shows dialogs
 
 ### UX Flow
@@ -84,4 +84,6 @@ Responsible for:
 - All OS API calls live in main process — renderer is sandboxed
 - Platform-specific scan implementations abstracted behind a common interface
 - Settings stored in Electron's `app.getPath('userData')` directory
-- TBD: offline behaviour when API is unreachable
+- Each scan fetches the latest policy before evaluation
+- If policy fetch fails because the device is offline, show an error in the main window and block the scan
+- v1 does not run scans against a cached policy

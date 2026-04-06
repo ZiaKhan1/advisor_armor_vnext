@@ -20,6 +20,7 @@ docs/
 
 ## Key Files for AI Context
 - Current plan & status → `docs/planning/PLAN.md`
+- Resolved planning decisions → `docs/planning/DECISIONS.md`
 - System design & data flow → `docs/architecture/ARCHITECTURE.md`
 - Tech stack decisions → `docs/architecture/STACK.md`
 - API contract & policy JSON → `docs/architecture/api-contract.md`

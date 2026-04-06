@@ -51,3 +51,4 @@ App behaviour config. Written by the app as needed. Keys missing from the file f
 - `diagnosticLogLevel` is configurable at runtime via IPC (no restart required) — see `docs/architecture/logging.md`
 - If `settings.json` is missing or malformed, all keys fall back to their defaults
 - If `storage/user.json` is missing, the app treats the user as not onboarded and shows the onboarding flow
+- v1 does not use a cached policy for offline scans; policy is fetched fresh for each scan
