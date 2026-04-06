@@ -91,7 +91,7 @@ Scan elements (initial list, may grow):
 - **Future improvement:** give user option to run scan anyway (view device status without policy evaluation) and submit results once back online
 
 ## Current Status
-- [ ] Planning phase — tech stack and architecture to be decided
+- [ ] Planning phase — ready to scaffold
 
 ## Open Decisions
 - API contract (policy fetch, result submission) — JSON sample to be provided by user

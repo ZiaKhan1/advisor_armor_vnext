@@ -19,7 +19,7 @@ created: 2026-04-05
 | Linting | ESLint + @typescript-eslint/recommended + eslint-plugin-react + eslint-plugin-react-hooks | TypeScript and React official/standard rule sets. See `code-quality.md`. |
 | Formatting | Prettier | Format on save (VSCode) + pre-commit hook. See `code-quality.md` for config. |
 | Pre-commit | husky + lint-staged | Runs lint + format check on staged files only. Fast (~1-2 seconds per commit). |
-| Styling | Tailwind CSS + shadcn/ui | *(pending final confirmation before implementation)* |
+| Styling | Tailwind CSS + shadcn/ui | Tailwind for layout and custom styling; shadcn/ui for Accordion, Card, Button, Dialog, Tabs, Badge components. See `docs/features/ui.md`. |
 | State Management | React Context + useReducer | Lightweight state footprint — no dedicated library needed. Sufficient for: onboarding state, scan results, policy, settings. Migrate to Zustand later if needed. |
 | Unit Testing | Vitest | Same toolchain as Vite, fast, TypeScript out of the box, Jest-compatible API |
 | Component Testing | React Testing Library + Vitest | Tests UI the way a user interacts with it, same test runner as unit tests |

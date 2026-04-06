@@ -29,7 +29,8 @@ docs/
 - White-labelling & mock mode → `docs/architecture/white-labelling.md`
 - Local storage & settings files → `docs/architecture/local-storage.md`
 - Scan implementation approach → `docs/architecture/scan-implementation.md`
-- Feature specs → `docs/features/`
+- UI screens, components & tray menu → `docs/features/ui.md`
+- Other feature specs → `docs/features/`
 
 ## Session Notes
 - Read `docs/planning/PLAN.md` first when resuming work
