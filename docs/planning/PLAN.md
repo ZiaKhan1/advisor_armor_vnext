@@ -67,7 +67,7 @@ Scan elements (initial list, may grow):
 - Updates hosted on GitHub releases
 - App prompts user when a new version is available
 - User confirms → update downloaded and installed
-- Detailed update check schedule and UX flow to be defined at implementation
+- Update check: silent on launch + every 24 hours; manual via tray menu — see `docs/architecture/ARCHITECTURE.md`
 - Tool: electron-updater (part of electron-builder ecosystem)
 - Code signing will be implemented for both Mac and Windows (required for Mac auto-updates)
 

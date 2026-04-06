@@ -57,6 +57,8 @@ created: 2026-04-05
   - Device version ≥ Approved version → **PASS**
   - Device version ≥ Nudged version but < Approved version → **NUDGE**
   - Device version < Nudged version → **FAIL**
+- **Version comparison:** Policy version strings are prefixed with `>=` before comparison (e.g. `"15.1"` → `">=15.1"`). Policy values are always treated as strings even if backend stores them as numbers.
+- **Windows 10 vs Non-10 detection:** Determined by the first segment of the OS version string. If the first segment is more than 2 digits (e.g. `19041`), it is a Non-10 build; otherwise it is Windows 10.
 - **Platforms:** Mac, Windows
 
 ### 7. Screen Idle — Mac

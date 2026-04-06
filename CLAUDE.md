@@ -28,6 +28,7 @@ docs/
 - Code quality (ESLint, Prettier, husky) → `docs/architecture/code-quality.md`
 - White-labelling & mock mode → `docs/architecture/white-labelling.md`
 - Local storage & settings files → `docs/architecture/local-storage.md`
+- Scan implementation approach → `docs/architecture/scan-implementation.md`
 - Feature specs → `docs/features/`
 
 ## Session Notes
