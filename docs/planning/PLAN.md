@@ -96,4 +96,4 @@ Scan elements (initial list, may grow):
 ## Open Decisions
 - API contract (policy fetch, result submission) — JSON sample to be provided by user
 - Full list of scan elements beyond initial set — TBD
-- Settings file format and location — TBD
+- Settings file format and location — resolved, see `docs/architecture/local-storage.md`
