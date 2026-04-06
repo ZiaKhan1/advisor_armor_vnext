@@ -26,6 +26,7 @@ created: 2026-04-05
 | E2E Testing | Playwright | Best maintained E2E tool with official Electron support |
 
 ## Build Config Notes
+- Minimal manual Vite guidance is documented in `docs/architecture/build-tooling.md`
 - Three separate Vite configs: `vite.config.main.ts`, `vite.config.preload.ts`, `vite.config.renderer.ts`
 - Main and preload target Node/CJS; renderer targets browser
 - Dev bootstrap script sequences renderer dev server, main/preload builds, and Electron launch
@@ -35,7 +36,7 @@ created: 2026-04-05
 ## Rejected Options
 | Option | Reason rejected |
 |---|---|
-| electron-vite | Single-person project — bus factor risk for a production app |
+| electron-vite | Credible option, but manual Vite is preferred because build behavior stays more explicit and easier to debug deeply for a long-lived desktop app |
 | electron-forge | Bundles build + packaging into one opinionated tool; electron-builder is more flexible for packaging |
 | electron-forge + electron-builder | Not designed to work together — creates more friction than value |
 | Manual Webpack | Heavier and slower than Vite with no meaningful benefit for this project |
