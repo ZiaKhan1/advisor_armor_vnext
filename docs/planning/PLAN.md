@@ -67,7 +67,7 @@ Scan elements (initial list, may grow):
 - Updates hosted on GitHub releases
 - App prompts user when a new version is available
 - User confirms → update downloaded and installed
-- Detailed update check schedule and UX flow to be defined at implementation
+- Update check: silent on launch + every 24 hours; manual via tray menu — see `docs/architecture/ARCHITECTURE.md`
 - Tool: electron-updater (part of electron-builder ecosystem)
 - Code signing will be implemented for both Mac and Windows (required for Mac auto-updates)
 
@@ -91,9 +91,9 @@ Scan elements (initial list, may grow):
 - **Future improvement:** give user option to run scan anyway (view device status without policy evaluation) and submit results once back online
 
 ## Current Status
-- [ ] Planning phase — tech stack and architecture to be decided
+- [ ] Planning phase — ready to scaffold
 
 ## Open Decisions
 - API contract (policy fetch, result submission) — JSON sample to be provided by user
 - Full list of scan elements beyond initial set — TBD
-- Settings file format and location — TBD
+- Settings file format and location — resolved, see `docs/architecture/local-storage.md`

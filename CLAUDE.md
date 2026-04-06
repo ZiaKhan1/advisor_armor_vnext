@@ -26,7 +26,11 @@ docs/
 - Scan elements & result logic → `docs/architecture/scan-logic.md`
 - Logging rules → `docs/architecture/logging.md`
 - Code quality (ESLint, Prettier, husky) → `docs/architecture/code-quality.md`
-- Feature specs → `docs/features/`
+- White-labelling & mock mode → `docs/architecture/white-labelling.md`
+- Local storage & settings files → `docs/architecture/local-storage.md`
+- Scan implementation approach → `docs/architecture/scan-implementation.md`
+- UI screens, components & tray menu → `docs/features/ui.md`
+- Other feature specs → `docs/features/`
 
 ## Session Notes
 - Read `docs/planning/PLAN.md` first when resuming work

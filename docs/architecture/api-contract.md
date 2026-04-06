@@ -6,9 +6,132 @@ created: 2026-04-05
 
 # API Contract
 
+## Onboarding Flow
+
+The onboarding sequence involves three sequential API calls:
+
+1. User enters email → client-side format validation (regex)
+2. **Validate Email** → if `status: true`, proceed; else show error
+3. **Check Access** → retrieve `admin` flag and `companyName`; show code input
+4. User enters 4-digit verification code → **Validate Code** → if `valid: true`, proceed
+5. Write `{ email, isAdmin, companyName }` to `storage/user.json`
+
+> **Note:** `waitForInternet()` is called before Validate Email to handle auto-launch on startup where the network may not be immediately available.
+
+---
+
+## Validate Email
+
+**Method:** POST
+**Content-Type:** multipart/form-data
+**Endpoint:** `config.apiBaseUrl` + validate email path (configured in `src/config.ts`)
+**Auth:** None defined in v1 — to be confirmed
+
+### Request Body (FormData)
+
+| Field | Value | Notes |
+|---|---|---|
+| `email` | user's email | As entered by user |
+| `advisorArmorVersion` | app version | From `package.json` |
+
+### Response
+
+```json
+{ "status": true }
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `status` | boolean | `true` = email recognised; `false` = email not found or not authorised |
+
+### Mock Behaviour
+Return `{ "status": true }` for any email.
+
+---
+
+## Validate Code
+
+**Method:** POST
+**Content-Type:** multipart/form-data
+**Endpoint:** `config.apiBaseUrl` + validate code path (configured in `src/config.ts`)
+**Auth:** None defined in v1 — to be confirmed
+
+### Request Body (FormData)
+
+| Field | Value | Notes |
+|---|---|---|
+| `type` | `"CHECK_CODE"` | Hardcoded constant |
+| `email` | user's email | |
+| `code` | 4-digit code | As entered by user |
+| `advisorArmorVersion` | app version | From `package.json` |
+
+### Response
+
+```json
+{ "valid": true }
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `valid` | boolean | `true` = code is correct; `false` = code is wrong or expired |
+
+### Mock Behaviour
+Return `{ "valid": true }` if submitted code matches `config.mockOtpCode` (default: `"123456"`); otherwise `{ "valid": false }`.
+
+---
+
+## Check Access
+
+**Method:** POST
+**Content-Type:** multipart/form-data
+**Endpoint:** `config.apiBaseUrl` + check access path (configured in `src/config.ts`)
+**Auth:** None defined in v1 — to be confirmed
+
+### Request Body (FormData)
+
+| Field | Value | Notes |
+|---|---|---|
+| `type` | `"CHECK_ACCESS"` | Hardcoded constant |
+| `email` | user's email | |
+| `advisorArmorVersion` | app version | From `package.json` |
+
+### Response
+
+```json
+{ "admin": false, "companyName": "Acme Corp" }
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `admin` | boolean | Whether user has admin privileges |
+| `companyName` | string | Organisation name — stored in `storage/user.json` |
+
+### Mock Behaviour
+Return `{ "admin": false, "companyName": "Demo Company" }`.
+
+---
+
 ## Policy Fetch
 
-**Request:** TBD (endpoint, method, auth headers)
+**Method:** POST
+**Content-Type:** multipart/form-data
+**Endpoint:** `config.apiBaseUrl` + policy path (configured in `src/config.ts`)
+**Auth:** None defined in v1 — to be confirmed
+
+### Request Body (FormData)
+
+| Field | Value | Notes |
+|---|---|---|
+| `type` | `"POLICY"` | Hardcoded constant |
+| `email` | user's email | From `storage/user.json` |
+| `advisorArmorVersion` | app version | From `package.json` |
+
+### Response
+
+- **Success:** JSON object with `AppPolicy` and `systemPolicy` (see structure below)
+- **API-level error:** `{ "status": "error", ... }` — throw and surface to user
+- **HTTP error:** non-2xx status — throw with status code and message
+
 **Input:** User email
 **Output:** JSON with `AppPolicy` and `systemPolicy`
 
@@ -113,7 +236,168 @@ created: 2026-04-05
 
 ## Result Submission
 
-**Request:** TBD (endpoint, method, auth headers, payload structure)
+**Method:** POST
+**Content-Type:** application/json
+**Endpoint:** `config.apiBaseUrl` + submission path (configured in `src/config.ts`)
+**Auth:** None defined in v1 — to be confirmed
+
+### Payload Structure
+
+```json
+{
+  "SystemPolicyResult": {
+    "Email": "user@example.com",
+    "version": "1.0.0",
+    "appletVersion": "1.0.0",
+    "deviceName": "MacBook Pro",
+    "osVersion": "15.1.0",
+    "hardwareModel": "MacBookPro18,1",
+    "hardwareSerialNo": "ABC123",
+    "hardwareUUID": "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+    "manufacturer": "Apple",
+    "osPlatform": "darwin",
+    "scanOverallResult": "PASS",
+    "osVersionResult": "PASS",
+    "firewallResult": "PASS",
+    "diskEncryptionResult": "FAIL",
+    "winDefenderAVResult": "PASS",
+    "screenLockResult": "PASS",
+    "screenIdleResult": "NUDGE",
+    "automaticUpdatesResult": "PASS",
+    "remoteLoginResult": "PASS",
+    "openWifiConnectionsResult": "PASS",
+    "activeWifiNetworkResult": "PASS",
+    "knownWifiNetworksResult": "FAIL",
+    "applicationsResult": "PASS",
+    "wifiWPA": "PASS",
+    "wifiWPA2": "PASS",
+    "wifiWPA3": "PASS",
+    "wifiID": "NA",
+    "wifiIFace": "en0",
+    "wifiModel": "NA",
+    "wifiSSID": "MyNetwork",
+    "wifiBSSID": "aa:bb:cc:dd:ee:ff",
+    "wifiChannel": 6,
+    "wifiFrequency": 2437,
+    "wifiType": "NA",
+    "wifiSecurity": "WPA2",
+    "wifiSignalLevel": -55,
+    "wifiTxRate": 144,
+    "networkIdResult": "PASS",
+    "networkIDIPs": "1.1.1.1,8.8.8.8",
+    "networkIDIPInUse": "1.1.1.1"
+  },
+  "AppPolicyResult": {
+    "appsScanResult": "FAIL",
+    "installedProhibitedApps": ["AppName"],
+    "missingRequiredAppsCategories": ["CategoryName"]
+  }
+}
+```
+
+### SystemPolicyResult Field Reference
+
+| Field | Source | Notes |
+|---|---|---|
+| `Email` | `user.json` | User's registered email |
+| `version` | `package.json` | App version — sent twice (see `appletVersion`) |
+| `appletVersion` | `package.json` | Same as `version` — legacy duplication, may be removed |
+| `deviceName` | device scan | Device hostname |
+| `osVersion` | device scan | OS version string |
+| `hardwareModel` | device scan | e.g. MacBookPro18,1 |
+| `hardwareSerialNo` | device scan | Hardware serial number |
+| `hardwareUUID` | device scan | Unique device identifier |
+| `manufacturer` | device scan | Platform name e.g. Apple |
+| `osPlatform` | device scan | e.g. darwin, win32 |
+| `scanOverallResult` | scan result | Overall PASS/FAIL/NUDGE |
+| `osVersionResult` | scan result | PASS/FAIL/NUDGE |
+| `firewallResult` | scan result | PASS/FAIL/NUDGE |
+| `diskEncryptionResult` | scan result | PASS/FAIL/NUDGE |
+| `winDefenderAVResult` | scan result | PASS/FAIL/NUDGE |
+| `screenLockResult` | scan result | PASS/FAIL/NUDGE |
+| `screenIdleResult` | scan result | PASS/FAIL/NUDGE |
+| `automaticUpdatesResult` | scan result | PASS/FAIL/NUDGE |
+| `remoteLoginResult` | scan result | PASS/FAIL/NUDGE |
+| `openWifiConnectionsResult` | hardcoded | Always `"PASS"` — backward compat, to be removed |
+| `activeWifiNetworkResult` | scan result | PASS/FAIL/NUDGE |
+| `knownWifiNetworksResult` | scan result | PASS/FAIL/NUDGE |
+| `applicationsResult` | scan result | PASS/FAIL/NUDGE |
+| `wifiWPA/WPA2/WPA3` | device scan | Result for active WiFi connection only (first connection) |
+| `wifiID/IFace/Model/SSID/BSSID/...` | device scan | Active WiFi connection details — `"NA"` if not available |
+| `networkIdResult` | scan result | PASS/FAIL/NUDGE |
+| `networkIDIPs` | policy | Comma-separated allowed IPs from policy |
+| `networkIDIPInUse` | scan result | The actual public IP detected during scan |
+
+### AppPolicyResult Field Reference
+
+| Field | Source | Notes |
+|---|---|---|
+| `appsScanResult` | scan result | Overall app policy result — PASS/FAIL/NUDGE |
+| `installedProhibitedApps` | scan result | Array of prohibited app names found on device |
+| `missingRequiredAppsCategories` | scan result | Array of required app category names not satisfied |
+
+### Default Values
+
+- Result fields (`getDefaultResult`): if the scan element was not run or not applicable, value defaults to `"PASS"`
+- Non-result fields (`getDefaultValue`): if value is unavailable, defaults to `"NA"`
+
+## Parsed Policy (Internal Structure)
+
+After fetching, the raw policy response is passed through `parseUserPolicy()` which produces the internal `parsedUserPolicy` object used throughout the scan logic:
+
+```ts
+{
+  osVersions: {
+    win:    { ok: ">=19041.450", nudge: ">=19041.449" },
+    winNon10: { ok: ">=19041.450", nudge: ">=19041.449" },
+    mac:    { ok: ">=15.1.0", nudge: ">=14.0.0" }
+  },
+  screenIdle: {
+    win: 3600,   // null if invalid or below minimum (1)
+    mac: 1800
+  },
+  screenLock: {
+    win: 1,      // null if invalid or below minimum (0)
+    mac: 900
+  },
+  remoteLogin: {
+    win: "FAIL",
+    mac: "FAIL"
+  },
+  firewall: "PASS",
+  diskEncryption: "PASS",
+  winDefenderAV: "PASS",
+  activeWifiNetwork: "FAIL",
+  knownWifiNetworks: "FAIL",
+  automaticUpdates: "FAIL",
+  scan: true,
+  IsShowPIIScan: false,
+  scanIntervalHours: 24,
+  netWorkSecurity: {
+    NWWPA: "PASS",
+    NWWPA2: "PASS",
+    NWWPA3: "PASS"
+  },
+  networkID: "PASS",
+  networkIDIPs: "1.1.1.1,8.8.8.8",
+  appsPolicy: {
+    prohibitedApps: ["AppName"],
+    requiredAppsCategories: [
+      { apps: ["App1", "App2"], requiredAppsCount: "3" }
+    ]
+  }
+}
+```
+
+### Parsing Notes
+
+- **`GetValidRequiredStatus`:** All PASS/FAIL/NUDGE policy values are normalised — null, empty, or unrecognised values default to `"PASS"`. Comparison is case-insensitive.
+- **OS version strings:** Always converted to strings via `String()` even if backend returns them as numbers. Prefixed with `>=` when used for comparison.
+- **Screen idle/lock:** Parsed via `convertToIntOrNull`. Values below the minimum (idle min=1, lock min=0) or non-numeric values → `null` → treated as PASS (N/A) in scan logic.
+- **`scanIntervalHours`:** Parsed as `parseFloat`. Falls back to the config default (24) if not present in policy.
+- **AppPolicy platform selection:** `macPolicy` selected on Mac, `windowsPolicy` on Windows. If `AppPolicy` is the string `"No matching policy found"`, both prohibited and required app checks are skipped.
+- **`prohibitedApps`:** Mapped to a flat array of trimmed app name strings. Entries with null `AppName` are filtered out.
+- **`requiredAppsCategories`:** Categories with empty app lists or missing `requiredAppsCount` are filtered out.
 
 ## Notes
 - All PASS/FAIL/NUDGE policy values are case-insensitive

@@ -49,9 +49,19 @@ Responsible for:
 ## Auto-Updates
 - Hosted on GitHub releases
 - Handled by `electron-updater` (electron-builder ecosystem)
-- Flow: app detects new version → prompts user → user confirms → download + install
-- Code signing required on both platforms (mandatory for Mac auto-updates, strongly recommended for Windows)
-- Detailed update check schedule TBD at implementation
+- Code signing required on both platforms (mandatory for Mac, strongly recommended for Windows)
+- `autoDownload` is disabled — user must confirm before download starts
+
+### Check Schedule
+- On launch — silent (no dialogs regardless of result)
+- Every 24 hours — silent
+- Manual — "Check for Update" in tray menu — shows dialogs
+
+### UX Flow
+1. Update available → dialog: "A new version is available, download now?" → Yes / No
+2. User confirms → download starts → progress shown in renderer UI
+3. Download complete → dialog: "Update downloaded, app will restart" → OK → quit and install
+4. No update / error during silent check → no dialog, errors logged to file
 
 ## Data Flow
 
