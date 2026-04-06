@@ -26,6 +26,7 @@ docs/
 - Scan elements & result logic → `docs/architecture/scan-logic.md`
 - Logging rules → `docs/architecture/logging.md`
 - Code quality (ESLint, Prettier, husky) → `docs/architecture/code-quality.md`
+- White-labelling & mock mode → `docs/architecture/white-labelling.md`
 - Feature specs → `docs/features/`
 
 ## Session Notes
