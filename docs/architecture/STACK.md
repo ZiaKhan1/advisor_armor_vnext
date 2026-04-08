@@ -12,7 +12,7 @@ created: 2026-04-05
 |---|---|---|
 | Language | TypeScript | Type safety across all three Electron entry points |
 | Renderer Framework | React | Widely adopted, good ecosystem for component-based UI |
-| Bundler | Manual Vite | Own the build config entirely — no third-party abstraction dependency. electron-vite (alex8088/electron-vite) used as reference for patterns and ideas. |
+| Bundler | electron-vite | Established Electron + Vite workflow with lower custom build-tooling overhead than a manual setup. See `docs/architecture/build-tooling.md`. |
 | Packaging / Distribution | electron-builder | Mature, flexible, strong Mac + Windows support, handles code signing and auto-updates |
 | Auto-Updates | electron-updater | Built by electron-builder team, native GitHub releases support, handles Mac + Windows update mechanisms, supports differential updates |
 | Logging | winston + winston-daily-rotate-file | Runs in main process; renderer logs routed via IPC. Strong community backing, flexible, battle-tested. See `logging.md` for full rules. |
@@ -26,17 +26,17 @@ created: 2026-04-05
 | E2E Testing | Playwright | Best maintained E2E tool with official Electron support |
 
 ## Build Config Notes
-- Minimal manual Vite guidance is documented in `docs/architecture/build-tooling.md`
-- Three separate Vite configs: `vite.config.main.ts`, `vite.config.preload.ts`, `vite.config.renderer.ts`
-- Main and preload target Node/CJS; renderer targets browser
-- Dev bootstrap script sequences renderer dev server, main/preload builds, and Electron launch
-- Auto-restart on main/preload changes via chokidar (not true HMR — same behaviour as electron-vite)
+- electron-vite workflow guidance is documented in `docs/architecture/build-tooling.md`
+- Use one `electron.vite.config.ts` with explicit `main`, `preload`, and `renderer` sections
+- electron-vite manages the renderer dev server and Electron dev workflow
 - Renderer gets full Vite HMR in development
+- Main and preload follow electron-vite's restart flow
+- electron-builder remains responsible for packaging, signing, and publishing
 
 ## Rejected Options
 | Option | Reason rejected |
 |---|---|
-| electron-vite | Credible option, but manual Vite is preferred because build behavior stays more explicit and easier to debug deeply for a long-lived desktop app |
 | electron-forge | Bundles build + packaging into one opinionated tool; electron-builder is more flexible for packaging |
 | electron-forge + electron-builder | Not designed to work together — creates more friction than value |
+| Manual Vite | Viable fallback, but higher custom maintenance cost than `electron-vite` for the same app structure |
 | Manual Webpack | Heavier and slower than Vite with no meaningful benefit for this project |

@@ -9,163 +9,166 @@ deprecated: ~
 
 ## Decision
 
-Use a minimal manual Vite setup for the Electron app.
+Use the `electron-vite` package for Electron development workflow and build tooling.
 
-This keeps the build system explicit and debuggable while avoiding unnecessary custom tooling. The goal is to own the small amount of wiring required for Electron rather than introducing a larger abstraction layer.
+This keeps the setup smaller than a hand-rolled multi-config Vite pipeline while still staying close to standard Electron and Vite concepts. The project will rely on `electron-vite` for development orchestration and production bundling, and continue using `electron-builder` for packaging, code signing, and auto-update distribution.
 
-## Scope of "Manual"
+## Why `electron-vite`
 
-Manual does not mean building a custom framework. It means keeping a thin layer that handles:
+- reduces custom build-script maintenance
+- provides established Electron + Vite development patterns
+- supports separate `main`, `preload`, and `renderer` entry points cleanly
+- keeps renderer HMR and Electron development workflow integrated
+- lowers the amount of custom restart/watch logic the project needs to own
 
-- separate builds for `main`, `preload`, and `renderer`
-- a development bootstrap flow
-- Electron restart on `main` or `preload` rebuild
-- production build output layout for `electron-builder`
-- explicit development vs production entry loading
+## Role Split
 
-Anything beyond that should be added only when there is a concrete need.
+- `electron-vite`: development workflow and app bundling
+- `electron-builder`: installer packaging, signing, publishing, and auto-update artifacts
 
-## Minimal File Layout
+`electron-vite` should not replace `electron-builder` in this project.
+
+## Expected Project Structure
+
+Keep the structure simple and aligned with `electron-vite` conventions:
 
 ```text
 electron/
-  main.ts
-  preload.ts
-scripts/
-  dev.ts
+  main/
+    index.ts
+  preload/
+    index.ts
 src/
   renderer/
-    main.tsx
-    App.tsx
-vite.config.main.ts
-vite.config.preload.ts
-vite.config.renderer.ts
-tsconfig.json
-tsconfig.main.json
-tsconfig.preload.json
-tsconfig.renderer.json
+    src/
+      main.tsx
+      App.tsx
+electron.vite.config.ts
 electron-builder.yml
+tsconfig.json
 ```
+
+The exact folder names can vary slightly, but the important point is that `main`, `preload`, and `renderer` remain clearly separated.
 
 ## Minimum Responsibilities
 
 ### 1. Build the Three Targets
 
-- `main` builds for Electron main process runtime
-- `preload` builds for Electron preload runtime
-- `renderer` builds for the browser runtime
+`electron-vite` should manage builds for:
 
-Each target has its own Vite config so entry points, output formats, aliases, and external dependencies stay explicit.
+- Electron main process
+- Electron preload script
+- renderer application
+
+The configuration should keep each target explicit rather than hiding them behind excessive abstraction.
 
 ### 2. Run Development Mode
 
-Development mode should:
+Development mode should use the standard `electron-vite` flow:
 
-1. start the renderer Vite dev server
-2. build `main` in watch mode
-3. build `preload` in watch mode
-4. launch Electron after initial builds are ready
+- start renderer dev server
+- build and watch `main`
+- build and watch `preload`
+- launch Electron automatically
+- reload or restart as appropriate when files change
 
-### 3. Restart Electron When Needed
+### 3. Keep Renderer HMR, Restart Main/Preload
 
-- Renderer changes use normal Vite HMR
-- `main` and `preload` changes trigger Electron process restart
+- renderer uses normal Vite HMR
+- `main` and `preload` should follow the `electron-vite` restart flow
 
-This should be treated as a simple restart loop, not as true HMR for privileged code.
+The project should rely on the package defaults where possible rather than rebuilding this logic manually.
 
-### 4. Produce Stable Production Outputs
+### 4. Produce Stable Outputs for Packaging
 
-Use fixed output folders so Electron entry paths and `electron-builder` configuration are simple and predictable.
+Bundled outputs should be predictable and easy for `electron-builder` to consume.
 
 Suggested layout:
 
 ```text
-dist/
+out/
   main/
   preload/
   renderer/
 ```
 
-### 5. Keep Dev and Prod Entry Resolution Explicit
+If `electron-vite` defaults differ, the project may use those defaults as long as the `electron-builder` config stays clear and stable.
 
-- In development, the BrowserWindow loads the local renderer dev server URL
-- In production, the BrowserWindow loads the built renderer HTML file
-- Preload always points to the built preload bundle path
+### 5. Keep Dev and Prod Entry Resolution Simple
 
-These rules should live in one small helper inside `electron/main.ts` or a nearby utility.
+`electron-vite` should handle the development and production loading split:
+
+- development loads the local renderer dev server
+- production loads built renderer assets
+- preload path stays explicit and controlled
+
+Avoid adding custom environment-dependent entry resolution unless a real requirement appears.
 
 ## Recommended Scripts
 
-Keep the script surface area small:
+Keep the scripts small and close to standard `electron-vite` usage:
 
 ```json
 {
   "scripts": {
-    "dev": "tsx scripts/dev.ts",
-    "build": "npm run build:main && npm run build:preload && npm run build:renderer",
-    "build:main": "vite build --config vite.config.main.ts",
-    "build:preload": "vite build --config vite.config.preload.ts",
-    "build:renderer": "vite build --config vite.config.renderer.ts",
-    "dist": "npm run build && electron-builder"
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "dist": "electron-vite build && electron-builder"
   }
 }
 ```
 
-If watch-mode scripts are split further, keep that internal to `scripts/dev.ts` rather than expanding `package.json` unnecessarily.
+Additional scripts are fine for mock mode, platform-specific packaging, or CI, but the core workflow should stay anchored to these commands.
 
-## Recommended Dev Bootstrap Behaviour
+## Configuration Guidance
 
-The dev bootstrap script should do only this:
+Prefer one `electron.vite.config.ts` file with clearly separated sections for:
 
-- start the renderer dev server
-- wait until the renderer URL is available
-- start `main` and `preload` builds in watch mode
-- wait for their first successful build
-- launch Electron
-- restart Electron when a watched privileged bundle rebuilds successfully
-- shut everything down cleanly on exit
+- `main`
+- `preload`
+- `renderer`
 
-Avoid adding environment mutation, code generation, or packaging logic into this script.
-
-## Keep Shared Config Small
-
-Shared Vite config is useful only for:
+Keep configuration explicit for:
 
 - path aliases
-- common externals
-- shared output conventions
+- externals
+- output directories
+- environment handling
 
-Do not force the three targets into a highly abstract shared config if their requirements differ. Small duplication is preferable to clever indirection here.
+Do not add a second layer of custom build abstraction on top of `electron-vite`.
 
 ## Debugging Principle
 
-The main reason to prefer this setup is debuggability.
+Even though `electron-vite` reduces setup code, the project should still keep failures easy to localise.
 
-When something breaks, the failure should be traceable to one of:
+When something breaks, it should still be traceable to one of:
 
 - Electron main entry
 - preload bundle
 - renderer bundle
-- dev bootstrap script
+- `electron-vite` configuration
 - `electron-builder` packaging config
 
-If the setup becomes harder to reason about than that, it is no longer minimal.
+If the project starts compensating for `electron-vite` with a large custom scripts layer, the setup should be reconsidered.
 
-## What Not to Build Up Front
+## What Not to Add Up Front
 
-- custom plugin framework
-- dynamic multi-environment config system
-- bespoke HMR layer for `main` or `preload`
-- generated build manifests unless a real packaging need appears
-- a large `scripts/` toolbox
+- custom wrapper framework around `electron-vite`
+- duplicate manual watch/restart scripts
+- complex generated config layers
+- environment handling spread across many files
+- packaging logic mixed into dev tooling
 
-## Comparison With `electron-vite`
+## Fallback Principle
 
-`electron-vite` is a credible and actively used tool, but this project prefers minimal manual Vite because:
+If `electron-vite` introduces a blocker that cannot be addressed cleanly through configuration or a small local workaround, the project can fall back to a manual Vite setup later.
 
-- build behavior stays fully explicit
-- debugging edge cases is more direct
-- there is no extra abstraction layer on the critical path
-- migration cost stays low because the setup uses standard Vite and Electron concepts
+That fallback remains viable because the app architecture still uses standard Electron concepts:
 
-This does not rule out revisiting `electron-vite` later. If the manual setup grows beyond the boundaries in this document, the project should reconsider whether the custom wiring is still worth owning.
+- main process
+- preload bridge
+- renderer app
+- `electron-builder` packaging
+
+The tooling choice should not distort the architecture.

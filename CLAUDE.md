@@ -23,7 +23,7 @@ docs/
 - Resolved planning decisions → `docs/planning/DECISIONS.md`
 - System design & data flow → `docs/architecture/ARCHITECTURE.md`
 - Tech stack decisions → `docs/architecture/STACK.md`
-- Minimal manual Vite approach → `docs/architecture/build-tooling.md`
+- electron-vite dev workflow & build tooling → `docs/architecture/build-tooling.md`
 - API contract & policy JSON → `docs/architecture/api-contract.md`
 - Scan elements & result logic → `docs/architecture/scan-logic.md`
 - Logging rules → `docs/architecture/logging.md`
