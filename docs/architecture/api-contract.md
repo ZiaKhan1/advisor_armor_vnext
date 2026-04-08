@@ -16,9 +16,13 @@ The onboarding sequence involves three sequential API calls:
 4. User enters 4-digit verification code → **Validate Code** → if `valid: true`, proceed
 5. Write `{ email, isAdmin, companyName }` to `storage/user.json`
 
-> **Note:** `waitForInternet()` is called before Validate Email to handle auto-launch on startup where the network may not be immediately available.
+> **Note:** `waitForInternet()` is called before Validate Email to handle auto-launch on startup where the network may not be immediately available. The initial implementation preserves the current behaviour: probe `https://www.google.com` every 2 seconds for up to 60 attempts (about 120 seconds) before failing.
 
 > **Naming note:** `advisorArmorVersion` is the current backend contract field name. Inside the app, prefer generic names such as `appVersion`, and map them to `advisorArmorVersion` at the API boundary.
+
+> **Configuration note:** All five backend endpoints are configured as fully independent URLs in `src/config.ts`. They are not derived from a shared `apiBaseUrl`.
+
+> **Error handling note:** The backend service layer should normalise failures into a small internal error model with categories such as `http`, `timeout`, `network`, `application`, and `unknown`. UI copy stays generic; logs should preserve the specific error category and details.
 
 ---
 
@@ -26,7 +30,7 @@ The onboarding sequence involves three sequential API calls:
 
 **Method:** POST
 **Content-Type:** multipart/form-data
-**Endpoint:** `config.apiBaseUrl` + validate email path (configured in `src/config.ts`)
+**Endpoint:** `config.validateEmailUrl`
 **Auth:** None. Endpoints are accessible in v1.
 
 ### Request Body (FormData)
@@ -49,13 +53,21 @@ The onboarding sequence involves three sequential API calls:
 ### Mock Behaviour
 Return `{ "status": true }` for any email.
 
+### Client Behaviour
+
+- Call `waitForInternet()` before sending the request
+- Apply an explicit client-side timeout of 20 seconds
+- Keep the existing success rule: only `response.status === true` is treated as success
+- Use generic user-facing error messages
+- Log response details only on error
+
 ---
 
 ## Validate Code
 
 **Method:** POST
 **Content-Type:** multipart/form-data
-**Endpoint:** `config.apiBaseUrl` + validate code path (configured in `src/config.ts`)
+**Endpoint:** `config.validateCodeUrl`
 **Auth:** None. Endpoints are accessible in v1.
 
 ### Request Body (FormData)
@@ -80,13 +92,21 @@ Return `{ "status": true }` for any email.
 ### Mock Behaviour
 Return `{ "valid": true }` if submitted code matches `config.mockOtpCode` (default: `"1234"`); otherwise `{ "valid": false }`.
 
+### Client Behaviour
+
+- Apply an explicit client-side timeout of 20 seconds
+- Keep the existing success rule: use only the boolean `valid` field
+- Use generic user-facing error messages
+- Do not log successful responses
+- Log only on error; in error cases, include the submitted verification code for diagnostics
+
 ---
 
 ## Check Access
 
 **Method:** POST
 **Content-Type:** multipart/form-data
-**Endpoint:** `config.apiBaseUrl` + check access path (configured in `src/config.ts`)
+**Endpoint:** `config.checkAccessUrl`
 **Auth:** None. Endpoints are accessible in v1.
 
 ### Request Body (FormData)
@@ -111,13 +131,21 @@ Return `{ "valid": true }` if submitted code matches `config.mockOtpCode` (defau
 ### Mock Behaviour
 Return `{ "admin": false, "companyName": "Demo Company" }`.
 
+### Client Behaviour
+
+- Apply an explicit client-side timeout of 20 seconds
+- Keep response handling loose and trust the returned JSON shape
+- Store both `admin` and `companyName` in `storage/user.json`
+- Use generic user-facing error messages
+- Log response details only on error
+
 ---
 
 ## Policy Fetch
 
 **Method:** POST
 **Content-Type:** multipart/form-data
-**Endpoint:** `config.apiBaseUrl` + policy path (configured in `src/config.ts`)
+**Endpoint:** `config.policyUrl`
 **Auth:** None. Endpoints are accessible in v1.
 
 ### Request Body (FormData)
@@ -236,11 +264,25 @@ Return `{ "admin": false, "companyName": "Demo Company" }`.
 | `IsShowPIIScan` | string | Yes/No | Not implemented in v1 |
 | `AdminEmail` | string | email | Admin contact |
 
+### Mock Behaviour
+
+- Return one fixed backend-shaped policy object for all users
+- Use the real parser and normalisation flow against that mock response
+
+### Client Behaviour
+
+- Apply an explicit client-side timeout of 30 seconds
+- Each scan fetches the latest policy before device evaluation starts
+- If offline or policy fetch fails, block the scan and show a generic full-window error with a `Try again` action
+- `Try again` restarts the full scan flow from the beginning, including a fresh policy fetch
+- On success, log the full raw policy response only
+- On error, log the full failure context including endpoint, email, and classified error type
+
 ## Result Submission
 
 **Method:** POST
 **Content-Type:** application/json
-**Endpoint:** `config.apiBaseUrl` + submission path (configured in `src/config.ts`)
+**Endpoint:** `config.sendScanResultUrl`
 **Auth:** None. Endpoints are accessible in v1.
 
 ### Payload Structure
@@ -296,6 +338,29 @@ Return `{ "admin": false, "companyName": "Demo Company" }`.
   }
 }
 ```
+
+### Response Handling
+
+- Treat the response as plain text
+- Do not depend on a typed JSON success payload
+- Preserve backend payload compatibility exactly
+
+### Mock Behaviour
+
+- Always succeed
+- Return plain text, mirroring the real contract shape
+
+### Client Behaviour
+
+- Apply an explicit client-side timeout of 20 seconds
+- Submit results only at the end of a scan
+- Retry failed submissions in the background
+- Default retry settings: 3 total attempts, fixed 5 second delay between attempts
+- Retry settings are configurable in `src/config.ts`
+- If all submission attempts fail, show a generic inline error in the main window
+- The app does not offer a standalone resend action; users can re-run the scan to trigger another submission attempt
+- Do not log successful response text
+- Log full response text and failure details on error only
 
 ### SystemPolicyResult Field Reference
 

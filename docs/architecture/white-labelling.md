@@ -17,7 +17,7 @@ Within the codebase, prefer generic names for shared concepts. For example, keep
 
 - The base application runs in **mock mode** out of the box — no backend required
 - All organisation-specific values (API URLs, branding, contact info) live in **one committed config file**
-- A single flag (`mockMode`) controls whether the app uses mock or real behaviour throughout the codebase
+- A single flag (`useMockBackend`) controls whether the app uses mock or real behaviour throughout the codebase
 
 ## Config File
 
@@ -29,16 +29,27 @@ Single file, committed to the repo. Contains all configurable values:
 
 ```ts
 export const config = {
-  mockMode: import.meta.env.VITE_MOCK_MODE === 'true',
-  apiBaseUrl: 'https://api.acme.com/devicewatch',
+  validateEmailUrl: 'https://api.acme.com/devicewatch/validate-email',
+  validateCodeUrl: 'https://api.acme.com/devicewatch/validate-code',
+  checkAccessUrl: 'https://api.acme.com/devicewatch/check-access',
+  policyUrl: 'https://api.acme.com/devicewatch/policy',
+  sendScanResultUrl: 'https://api.acme.com/devicewatch/send-scan-result',
   appName: 'AdvisorArmor',
   supportEmail: 'it@acme.com',
   troubleshootingUrl: 'https://acme.com/it/help',
   mockOtpCode: '1234',
+  useMockBackend: import.meta.env.VITE_MOCK_MODE === 'true',
+  validateEmailTimeoutMs: 20_000,
+  validateCodeTimeoutMs: 20_000,
+  checkAccessTimeoutMs: 20_000,
+  policyTimeoutMs: 30_000,
+  sendScanResultTimeoutMs: 20_000,
+  sendScanResultRetryMaxAttempts: 3,
+  sendScanResultRetryDelayMs: 5_000,
 }
 ```
 
-`mockMode` is the only value driven by an environment variable — everything else is hardcoded in the file.
+`useMockBackend` is the only value driven by an environment variable — everything else is hardcoded in the file.
 
 ## Switching Modes
 
@@ -52,27 +63,40 @@ Controlled via npm scripts:
 ```
 
 - Default dev and build use real (company) values
-- `:mock` variants override `mockMode` to `true` via the environment variable
+- `:mock` variants override `useMockBackend` to `true` via the environment variable
 - Tests always run in mock mode (see below)
 
 ## Mock Behaviour in Code
 
-Service-layer code checks `config.mockMode` to decide whether to call real APIs or return mock responses:
+Service-layer code checks `config.useMockBackend` to decide whether to call real APIs or return mock responses:
 
 ```ts
 import { config } from '@/config'
 
 async function fetchPolicy() {
-  if (config.mockMode) return mockPolicyResponse
-  return await api.get(config.apiBaseUrl + '/policy')
+  if (config.useMockBackend) return mockPolicyResponse
+  return await api.post(config.policyUrl, formData)
 }
 ```
 
-Mock responses are defined alongside the service, not in config.
+Mock responses are defined in code as typed constants, not in config or external JSON files.
+They cover only the five backend APIs:
+
+- `validateEmail`
+- `validateCode`
+- `checkAccess`
+- `policy`
+- `sendScanResult`
 
 ## OTP Verification in Mock Mode
 
-When `mockMode` is `true`, the OTP email step accepts `config.mockOtpCode` as the valid code (default: `1234`). No email is sent.
+When mock backend mode is enabled:
+
+- any email can follow the successful onboarding path
+- `checkAccess` returns one fixed `{ admin, companyName }` object
+- the OTP step accepts `config.mockOtpCode` as the valid code (default: `1234`)
+- policy fetch returns one fixed backend-shaped policy object for all users
+- result submission always succeeds and returns plain text
 
 ## Testing
 
@@ -112,9 +136,11 @@ assets/logo.png
 
 | Setting | Location |
 |---|---|
-| API base URL | `src/config.ts` |
-| Mock mode | `src/config.ts` (toggled via `VITE_MOCK_MODE`) |
+| Backend endpoint URLs | `src/config.ts` |
+| Mock backend mode | `src/config.ts` (toggled via `VITE_MOCK_MODE`) |
 | Mock OTP code | `src/config.ts` |
+| Backend client timeouts | `src/config.ts` |
+| Result submission retry settings | `src/config.ts` |
 | App display name (UI) | `src/config.ts` |
 | Support email | `src/config.ts` |
 | Troubleshooting URL | `src/config.ts` |

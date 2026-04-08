@@ -47,9 +47,14 @@ Configurable via `diagnosticLogLevel` setting:
 - Auto-update events — update found, download started, install triggered
 - App lifecycle — startup, scan scheduled, shutdown
 - All errors and exceptions
+- Full raw policy response body on successful policy fetch
+- Full response bodies for `validateEmail`, `checkAccess`, `validateCode`, and `sendScanResult` only on error
+- Email values may be logged when needed for diagnostics
+- Verification codes must not be logged on success; they may be logged on `validateCode` errors only
 
 ## Security
-- User email must never be logged in full in production — mask to `z***@domain.com` format
+- No special masking is required for email in v1 logs
+- Verification codes should be treated as sensitive and omitted from normal success logs
 - No sensitive device data logged beyond what is needed for diagnostics
 
 ## Other Patterns
@@ -58,6 +63,7 @@ Configurable via `diagnosticLogLevel` setting:
 - Error handling on logger initialisation — if `app.getPath('userData')` fails, log the failure explicitly rather than silently falling back to `__dirname`
 - Use native `Date` or `date-fns` for date formatting — **not moment.js** (legacy, unmaintained)
 - All imports use ES module `import` syntax — no `require()` mixed in
+- Backend error logs should distinguish between `http`, `timeout`, `network`, `application`, and `unknown` categories
 
 ## Not Implemented in v1
 - `getLogFile()` helper — may be added later if a log export feature is needed in the UI

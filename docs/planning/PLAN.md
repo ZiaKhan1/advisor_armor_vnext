@@ -90,8 +90,8 @@ Scan elements in v1 are defined in `docs/architecture/scan-logic.md`. The initia
   - Attempt 1: "Submitting results..."
   - Attempt 2+: "Submitting results (attempt N of M)..."
   - All attempts exhausted: "Results could not be submitted. Please check your connection." (user dismissible)
-- Retry behaviour is configurable (delay and max attempts stored in settings file)
-- Default: 3 retries, 15 second delay between attempts
+- Retry behaviour is configurable in `src/config.ts`
+- Default: 3 total attempts, 5 second delay between attempts
 - Scan results are always shown to user regardless of submission outcome
 
 ### Offline Behaviour
