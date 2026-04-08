@@ -38,13 +38,12 @@ Responsible for:
 | Disk encryption | FileVault (`fdesetup`) | BitLocker (`manage-bde`) |
 | Auto-updates check | Software Update preference | Windows Update settings |
 | Screen saver idle | `com.apple.screensaver` defaults | Registry / Group Policy |
-| Auto-start on login | LaunchAgent plist | Windows startup registry / Task Scheduler |
+| Auto-start on login | Electron login item API | Electron login item API |
 
 ## Auto-Start
 - Always enabled — not user-configurable
 - On launch: app window opens immediately, update checks run, then the scan flow begins
-- Mac: registered as LaunchAgent so it starts on user login
-- Windows: registered via startup registry key or Task Scheduler
+- v1 implementation uses Electron's built-in login item API (`app.setLoginItemSettings`) on both platforms
 
 ## Auto-Updates
 - Hosted on GitHub releases

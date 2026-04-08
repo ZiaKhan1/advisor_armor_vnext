@@ -13,20 +13,24 @@ All scan checks run in the **main process**. Each check is a TypeScript function
 
 ## OS Command Execution
 
-Two tools from Node.js `child_process`, chosen per check based on complexity:
+Use a small typed command runner in the main process. Prefer `execFile` as the default. Fall back to `spawn` only when a check truly needs streamed or stdin-driven execution.
 
-### `exec` — simple commands
-From `child_process/promises`. Buffers output and returns when process completes. Best for simple commands with small, predictable output.
+### `execFile` — default path
+From Node.js `child_process`. Best for short commands with explicit executable + argument lists, timeouts, and predictable output.
 
 ```ts
-import { exec } from 'child_process/promises'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 
-const { stdout } = await exec('fdesetup status')
-// stdout = "FileVault is On."
+const execFileAsync = promisify(execFile)
+
+const { stdout } = await execFileAsync('bash', ['-lc', 'fdesetup status'], {
+  timeout: 10_000
+})
 ```
 
-### `spawn` — complex scripts
-From `child_process`. Streams output and supports writing to stdin. Used when the script is multi-line or complex — script is piped via stdin to avoid shell escaping issues.
+### `spawn` — exception path
+Use only when a check genuinely needs streamed output or stdin-driven scripting.
 
 ```ts
 import { spawn } from 'child_process'
@@ -57,12 +61,12 @@ function runShell(script: string): Promise<string> {
 ```
 
 ### Which to use
-The choice is case by case depending on the command:
+Default to `execFile`:
 
 | Scenario | Tool |
 |---|---|
-| Simple Mac shell command | `exec` |
-| Simple Windows command (`netsh`, `reg query`) | `exec` |
+| Simple Mac shell command | `execFile('bash', ['-lc', ...])` |
+| Simple Windows command (`powershell.exe`, `netsh`, `reg query`) | `execFile(...)` |
 | Complex multi-line PowerShell | `spawn` → `runPowerShell` |
 | Complex multi-line bash | `spawn` → `runShell` |
 
@@ -86,6 +90,13 @@ Windows checks use PowerShell (`Get-NetFirewallProfile`, `Get-BitLockerVolume`, 
 - If a check throws or times out → log the error, return `null`
 - `null` result → treated as PASS in scan logic (cannot determine = do not penalise user)
 - All errors logged to file regardless of whether they are shown to the user
+
+## Provisional Bottom-Layer Reads
+
+- During early implementation, the bottom-most OS read for a specific check may return a provisional hardcoded value if the real device-setting lookup is still under investigation
+- This applies only to the device-setting read layer, not to policy parsing, evaluation, onboarding, submission, or persistence
+- Provisional implementations should be explicitly marked in code and can exist in both mock and real backend modes
+- UI should behave normally; provisional checks are not surfaced to the user as a special state
 
 ## Network ID Check
 

@@ -1,0 +1,14 @@
+appId: com.advisorarmor.devicewatch
+productName: AdvisorArmor
+directories:
+  output: release
+files:
+  - out/**
+  - package.json
+mac:
+  category: public.app-category.utilities
+win:
+  target:
+    - nsis
+publish:
+  provider: github
