@@ -30,5 +30,7 @@ This file records planning decisions that were previously ambiguous across docs.
 - Mock mode covers only the five backend APIs and uses fixed in-code responses.
 - Backend calls use explicit client-side timeouts: 20 seconds for onboarding/submission calls and 30 seconds for policy fetch.
 - Submission happens only at the end of a scan. If submission ultimately fails, the UI shows a generic inline error and the user can re-run the scan to try again.
+- The app persists only minimal last-scan metadata in `storage/last-scan.json`: completion time, duration, and overall status.
+- Logging out clears `storage/user.json` and `storage/last-scan.json`, but keeps `settings.json`.
 - Backend errors are normalised in the service layer and classified in logs as `http`, `timeout`, `network`, `application`, or `unknown`.
 - Windows app detection for app policy checks remains a research spike.
