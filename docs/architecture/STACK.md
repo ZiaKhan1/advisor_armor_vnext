@@ -22,11 +22,14 @@ created: 2026-04-05
 | Styling | Tailwind CSS + shadcn/ui | Tailwind for layout and custom styling; shadcn/ui for Accordion, Card, Button, Dialog, Tabs, Badge components. See `docs/features/ui.md`. |
 | State Management | React Context + useReducer | Lightweight state footprint — no dedicated library needed. Sufficient for: onboarding state, scan results, policy, settings. Migrate to Zustand later if needed. |
 | Unit Testing | Vitest | Same toolchain as Vite, fast, TypeScript out of the box, Jest-compatible API |
-| Component Testing | React Testing Library + Vitest | Tests UI the way a user interacts with it, same test runner as unit tests |
+| UI Testing | React Testing Library + Vitest | Tests renderer behaviour the way a user interacts with it, using the same runner as unit tests |
+| Network Mocking | MSW | Cleaner HTTP mocking for renderer and service-layer tests than ad hoc fetch stubs. Keeps backend contract tests realistic. |
 | E2E Testing | Playwright | Best maintained E2E tool with official Electron support |
+| IPC / Scan Test Strategy | Thin custom fakes + fixtures | Keep IPC tests explicit in-process. Test OS scan logic mostly through command-output fixtures and parser tests, not real machine settings in CI. See `docs/architecture/testing.md`. |
 
 ## Build Config Notes
 - electron-vite workflow guidance is documented in `docs/architecture/build-tooling.md`
+- testing strategy guidance is documented in `docs/architecture/testing.md`
 - Use one `electron.vite.config.ts` with explicit `main`, `preload`, and `renderer` sections
 - electron-vite manages the renderer dev server and Electron dev workflow
 - Renderer gets full Vite HMR in development

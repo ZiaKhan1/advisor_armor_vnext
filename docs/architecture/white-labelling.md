@@ -100,14 +100,29 @@ When mock backend mode is enabled:
 
 ## Testing
 
-Tests always run in mock mode. This is set directly in the test config — not relying on an env var — so tests are always self-contained regardless of how they are invoked:
+Mock backend mode should be the default for UI-flow and Playwright tests, but not a blanket rule for every test.
+
+Use mock backend mode for:
+
+- onboarding flow tests
+- renderer happy-path tests
+- Playwright tests that exercise backend-driven UI flows
+
+Do not rely on global mock mode for:
+
+- parser tests
+- command-runner tests
+- timeout and retry tests
+- error-classification tests
+
+When a test suite needs mock backend mode, set it directly in the test config so the suite stays self-contained regardless of how it is invoked:
 
 ```ts
 // vitest.config.ts
 process.env.VITE_MOCK_MODE = 'true'
 ```
 
-E2E tests (Playwright) follow the same rule.
+See `docs/architecture/testing.md` for the broader test strategy.
 
 ## Logo
 
