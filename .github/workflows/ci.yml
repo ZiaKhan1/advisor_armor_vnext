@@ -48,6 +48,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Package smoke test
+        run: npm run package:smoke
+
       - name: Upload test artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4

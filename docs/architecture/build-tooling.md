@@ -138,12 +138,68 @@ Keep the scripts small and close to standard `electron-vite` usage:
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "dist": "electron-vite build && electron-builder"
+    "package": "electron-vite build && electron-builder --dir",
+    "package:smoke": "electron-builder --dir",
+    "dist": "electron-vite build && electron-builder",
+    "dist:mac:universal": "electron-vite build && electron-builder --mac --universal"
   }
 }
 ```
 
 Additional scripts are fine for mock mode, platform-specific packaging, or CI, but the core workflow should stay anchored to these commands.
+
+## Installer Workflow
+
+Use `electron-builder` for packaged app and installer outputs:
+
+- `npm run package` creates an unpacked app bundle through `electron-builder --dir`; this is the fastest packaging smoke test.
+- `npm run package:smoke` runs only `electron-builder --dir` and expects `out/` to already exist; CI uses this after `npm run build`.
+- `npm run dist` creates installer artifacts for the current platform.
+- `npm run dist:mac`, `npm run dist:win`, and `npm run dist:linux` create platform-specific artifacts when the build host supports that target.
+- `npm run dist:mac:universal` creates the macOS distribution artifact for both Intel Mac and Apple Silicon.
+
+The installer output directory is `release/`. Local generated artifacts are ignored by git.
+
+macOS installer output should include a `.dmg` for manual install testing and a `.zip` for future auto-update compatibility. Windows should produce an NSIS installer. Local installer builds are unsigned for now so packaging can be tested without depending on developer certificates or keychain state. Signing, notarization, and publishing should be added later once Apple Developer ID, Windows signing certificate, and GitHub release credentials are available.
+
+macOS release distribution should use universal builds so one artifact supports both `x64` Intel Macs and `arm64` Apple Silicon Macs. Current-architecture macOS builds are acceptable for local smoke testing only.
+
+CI should run `npm run package:smoke` after `npm run build` as a packaging smoke test. Full signed installer creation and publishing should remain a release workflow concern rather than a normal push check.
+
+## Future Release Publishing
+
+The normal CI workflow should not publish installer artifacts. It should only validate that the app can build and package.
+
+A separate release workflow should be added later for real distribution. That workflow should run only for explicit release events, such as version tags:
+
+```yaml
+on:
+  push:
+    tags:
+      - 'v*'
+```
+
+The release workflow should:
+
+- install dependencies with `npm ci`
+- run the same validation checks as CI or depend on a passing CI result
+- build macOS universal artifacts with `npm run dist:mac:universal`
+- sign and notarize macOS artifacts
+- run `electron-builder` with publishing enabled, for example `--publish always`
+- upload artifacts to GitHub Releases through the configured `publish` provider
+
+The `publish` configuration should be made explicit before enabling release uploads:
+
+```yaml
+publish:
+  provider: github
+  owner: AdvisorArmorApplets
+  repo: <release-repository>
+```
+
+`electron-builder` uses this configuration plus a GitHub token, usually `GH_TOKEN` or `GITHUB_TOKEN`, to create or update a GitHub Release and upload installer artifacts such as `.dmg`, `.zip`, blockmaps, and update metadata.
+
+`electron-updater` will later use those GitHub Release artifacts and metadata to discover and install app updates.
 
 ## Configuration Guidance
 
