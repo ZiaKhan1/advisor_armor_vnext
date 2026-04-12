@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
 import type { DeviceWatchApi } from '@shared/ipc'
 import type { RendererState, ScanElementResult } from '@shared/models'
 import { FAIL, NUDGE, PASS } from '@shared/status'
@@ -141,7 +142,8 @@ function installDeviceWatch(state: RendererState): DeviceWatchApi {
     logout: async () => undefined,
     openSupportEmail: async () => undefined,
     openTroubleshooting: async () => undefined,
-    openFirewallSettings: async () => undefined
+    openFirewallSettings: async () => undefined,
+    openDiskEncryptionSettings: async () => undefined
   }
   window.deviceWatch = api
   return api
@@ -230,6 +232,77 @@ it('shows recommended action for non-firewall scan rows', async () => {
   expect(
     screen.getByText('Install an approved password manager.')
   ).toBeInTheDocument()
+})
+
+it('opens disk encryption settings from a scan row action', async () => {
+  const user = userEvent.setup()
+  const api = installDeviceWatch(
+    createResultsState({
+      currentScan: {
+        startedAt: '2026-04-12T02:14:58.500Z',
+        durationMs: 1500,
+        companyName: 'Example Advice',
+        result: {
+          status: FAIL,
+          osVersion: PASS,
+          firewall: PASS,
+          diskEncryption: FAIL,
+          winDefenderAV: PASS,
+          screenLock: PASS,
+          screenIdle: PASS,
+          automaticUpdates: PASS,
+          remoteLogin: PASS,
+          activeWifiNetwork: PASS,
+          knownWifiNetworks: PASS,
+          networkID: PASS,
+          networkIDInUse: '',
+          applications: PASS,
+          appsPolicyResult: {
+            appsScanResult: PASS,
+            installedProhibitedApps: [],
+            missingRequiredAppsCategories: []
+          },
+          elements: [
+            createScanElement({
+              key: 'diskEncryption',
+              title: 'Disk Encryption',
+              status: FAIL,
+              detail:
+                'BitLocker appears to be turned off for the Windows system drive.',
+              description:
+                "Full-disk encryption protects data at rest from being accessed by a party who does not know the password or decryption key. Systems containing internal data should be encrypted. It is every employee's responsibility to keep internal data safe.",
+              descriptionSteps: [
+                {
+                  text: 'Open ',
+                  linkText: 'BitLocker Drive Encryption',
+                  action: 'openDiskEncryptionSettings'
+                }
+              ],
+              fixInstruction:
+                'Turn on BitLocker for the Windows system drive.'
+            })
+          ]
+        }
+      }
+    })
+  )
+  const openDiskEncryptionSettings = vi.spyOn(
+    api,
+    'openDiskEncryptionSettings'
+  )
+
+  render(<App />)
+
+  const diskEncryptionRow = await screen.findByRole('button', {
+    name: /disk encryption/i
+  })
+  await user.click(diskEncryptionRow)
+  await user.click(
+    screen.getByRole('button', { name: 'BitLocker Drive Encryption' })
+  )
+
+  expect(openDiskEncryptionSettings).toHaveBeenCalledTimes(1)
+  expect(screen.queryByText('Recommended action')).not.toBeInTheDocument()
 })
 
 it('keeps footer actions available', async () => {

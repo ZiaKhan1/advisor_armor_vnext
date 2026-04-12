@@ -24,7 +24,9 @@ const api: DeviceWatchApi = {
   openSupportEmail: () => ipcRenderer.invoke(ipcChannels.openSupportEmail),
   openTroubleshooting: () => ipcRenderer.invoke(ipcChannels.openTroubleshooting),
   openFirewallSettings: () =>
-    ipcRenderer.invoke(ipcChannels.openFirewallSettings)
+    ipcRenderer.invoke(ipcChannels.openFirewallSettings),
+  openDiskEncryptionSettings: () =>
+    ipcRenderer.invoke(ipcChannels.openDiskEncryptionSettings)
 }
 
 contextBridge.exposeInMainWorld('deviceWatch', api)

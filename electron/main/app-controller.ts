@@ -250,6 +250,36 @@ export class AppController extends EventEmitter {
     })
   }
 
+  async openDiskEncryptionSettings(): Promise<void> {
+    if (process.platform === 'win32') {
+      const child = spawn(
+        'control.exe',
+        ['/name', 'Microsoft.BitLockerDriveEncryption'],
+        {
+          detached: true,
+          stdio: 'ignore',
+          windowsHide: true
+        }
+      )
+      child.unref()
+      return
+    }
+
+    if (process.platform === 'darwin') {
+      await shell.openExternal(
+        'x-apple.systempreferences:com.apple.preference.security'
+      )
+      return
+    }
+
+    logger.warn(
+      'Opening disk encryption settings is not supported on this platform',
+      {
+        platform: process.platform
+      }
+    )
+  }
+
   async checkForUpdates(): Promise<void> {
     await this.updateService.checkForUpdates()
   }

@@ -105,6 +105,8 @@ async function readWindowsFirewallEnabled(): Promise<boolean | null> {
     [
       '-NoProfile',
       '-NonInteractive',
+      '-ExecutionPolicy',
+      'Bypass',
       '-Command',
       'Get-NetFirewallProfile | Select-Object Name, Enabled | ConvertTo-Json -Compress'
     ],

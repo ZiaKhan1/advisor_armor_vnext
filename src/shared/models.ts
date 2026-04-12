@@ -74,6 +74,13 @@ export interface WifiConnection {
   wpa3Result: PolicyStatus
 }
 
+export type DiskEncryptionState =
+  | 'enabled'
+  | 'disabled'
+  | 'encrypting'
+  | 'decrypting'
+  | 'unknown'
+
 export interface DeviceSnapshot {
   deviceName: string
   platformName: string
@@ -84,6 +91,7 @@ export interface DeviceSnapshot {
   deviceId: string
   firewallEnabled: boolean | null
   diskEncryptionEnabled: boolean | null
+  diskEncryptionState: DiskEncryptionState
   automaticUpdatesEnabled: boolean | null
   remoteLoginEnabled: boolean | null
   winDefenderEnabled: boolean | null
@@ -124,7 +132,7 @@ export interface ScanElementDescriptionStep {
   text: string
   linkText?: string
   linkUrl?: string
-  action?: 'openFirewallSettings'
+  action?: 'openFirewallSettings' | 'openDiskEncryptionSettings'
   suffix?: string
 }
 

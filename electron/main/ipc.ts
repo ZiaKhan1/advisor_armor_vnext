@@ -28,4 +28,7 @@ export function registerIpc(controller: AppController): void {
   ipcMain.handle(ipcChannels.openFirewallSettings, () =>
     controller.openFirewallSettings()
   )
+  ipcMain.handle(ipcChannels.openDiskEncryptionSettings, () =>
+    controller.openDiskEncryptionSettings()
+  )
 }

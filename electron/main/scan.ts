@@ -9,10 +9,16 @@ import type {
 } from '@shared/models'
 import { FAIL, NUDGE, PASS, type PolicyStatus } from '@shared/status'
 import { config } from '../../src/config'
+import {
+  isDiskEncryptionOk,
+  readDiskEncryptionState
+} from './scan-checks/disk-encryption'
 import { readFirewallEnabled } from './scan-checks/firewall'
 
 const FIREWALL_DESCRIPTION =
   'Firewalls control network traffic into and out of a system. Enabling the firewall on your device can prevent network-based attacks on your system and is especially important if you make use of unsecured wireless networks (such as at coffee shops and airports).'
+const DISK_ENCRYPTION_DESCRIPTION =
+  "Full-disk encryption protects data at rest from being accessed by a party who does not know the password or decryption key. Systems containing internal data should be encrypted. It is every employee's responsibility to keep internal data safe."
 
 async function resolvePublicIp(): Promise<string> {
   for (const url of [
@@ -35,6 +41,8 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
   const currentPlatform = platform()
   const publicIp = await resolvePublicIp()
   const firewallEnabled = await readFirewallEnabled(currentPlatform)
+  const diskEncryptionState = await readDiskEncryptionState(currentPlatform)
+  const diskEncryptionEnabled = isDiskEncryptionOk(diskEncryptionState)
 
   const wifiConnections: WifiConnection[] = [
     {
@@ -64,8 +72,9 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
     hardwareSerial: 'PROVISIONAL-SERIAL',
     deviceId: 'PROVISIONAL-DEVICE-ID',
     firewallEnabled,
+    diskEncryptionEnabled,
+    diskEncryptionState,
     // Provisional bottom-layer values are acceptable in v1 scaffolding.
-    diskEncryptionEnabled: true,
     automaticUpdatesEnabled: false,
     remoteLoginEnabled: false,
     winDefenderEnabled: currentPlatform === 'win32' ? true : null,
@@ -146,7 +155,7 @@ export function evaluateDevice(
   const firewall = evaluateBoolean(policy.firewall, device.firewallEnabled)
   const diskEncryption = evaluateBoolean(
     policy.diskEncryption,
-    device.diskEncryptionEnabled
+    isDiskEncryptionOk(device.diskEncryptionState)
   )
   const automaticUpdates = evaluateBoolean(
     policy.automaticUpdates,
@@ -251,10 +260,13 @@ export function evaluateDevice(
       'diskEncryption',
       'Disk Encryption',
       diskEncryption,
-      device.diskEncryptionEnabled
-        ? 'Disk encryption appears enabled.'
-        : 'Disk encryption appears disabled.',
-      'Enable FileVault or BitLocker.'
+      describeDiskEncryptionState(device.platform, device.diskEncryptionState),
+      recommendDiskEncryptionAction(
+        device.platform,
+        device.diskEncryptionState
+      ),
+      DISK_ENCRYPTION_DESCRIPTION,
+      getDiskEncryptionDescriptionSteps(device.platform)
     ),
     buildElement(
       'screenIdle',
@@ -408,6 +420,52 @@ function getFirewallDescriptionSteps(
   return [{ text: 'Open device settings and ensure the system firewall is on.' }]
 }
 
+function getDiskEncryptionDescriptionSteps(
+  currentPlatform: string
+): ScanElementDescriptionStep[] {
+  if (currentPlatform === 'darwin') {
+    return [
+      { text: 'Open System Settings from the Apple menu.' },
+      {
+        text: 'Click ',
+        linkText: 'Privacy & Security',
+        linkUrl: 'x-apple.systempreferences:com.apple.preference.security',
+        suffix: '.'
+      },
+      { text: 'Scroll to FileVault.' },
+      { text: 'Turn FileVault on.' },
+      {
+        text: 'If prompted, enter your Mac administrator password or use Touch ID.'
+      },
+      {
+        text: 'Choose whether to allow your iCloud account to unlock your disk or create a recovery key. If you create a recovery key, store it in a safe place.'
+      }
+    ]
+  }
+
+  if (currentPlatform === 'win32') {
+    return [
+      {
+        text: 'Open ',
+        linkText: 'BitLocker Drive Encryption',
+        action: 'openDiskEncryptionSettings'
+      },
+      { text: 'Find the operating system drive, usually C:.' },
+      { text: 'Turn on BitLocker or resume protection if it is suspended.' },
+      { text: 'Follow the prompts to save the recovery key.' },
+      {
+        text: 'Start encryption and keep the device connected to power until encryption completes.'
+      }
+    ]
+  }
+
+  return [
+    {
+      text: 'Open device settings and ensure full-disk encryption is turned on.'
+    }
+  ]
+}
+
 function describeAppState(
   prohibitedApps: string[],
   missingCategories: string[]
@@ -461,6 +519,83 @@ function describeFirewallState(
   }
 
   return enabled ? 'Firewall appears enabled.' : 'Firewall appears disabled.'
+}
+
+function describeDiskEncryptionState(
+  currentPlatform: string,
+  state: DeviceSnapshot['diskEncryptionState']
+): string {
+  if (currentPlatform === 'darwin') {
+    if (state === 'enabled') {
+      return 'FileVault is turned on.'
+    }
+    if (state === 'encrypting') {
+      return 'FileVault encryption is in progress.'
+    }
+    if (state === 'decrypting') {
+      return 'FileVault decryption is in progress.'
+    }
+    if (state === 'disabled') {
+      return 'FileVault is turned off.'
+    }
+    return 'Disk encryption status could not be determined.'
+  }
+
+  if (currentPlatform === 'win32') {
+    if (state === 'enabled') {
+      return 'BitLocker appears to be turned on for the Windows system drive.'
+    }
+    if (state === 'disabled') {
+      return 'BitLocker appears to be turned off for the Windows system drive.'
+    }
+    return 'Disk encryption status could not be determined.'
+  }
+
+  if (state === 'enabled' || state === 'encrypting') {
+    return 'Disk encryption appears enabled.'
+  }
+
+  if (state === 'disabled' || state === 'decrypting') {
+    return 'Disk encryption appears disabled.'
+  }
+
+  return 'Disk encryption status could not be determined.'
+}
+
+function recommendDiskEncryptionAction(
+  currentPlatform: string,
+  state: DeviceSnapshot['diskEncryptionState']
+): string {
+  if (state === 'enabled') {
+    return 'No action required.'
+  }
+
+  if (state === 'encrypting') {
+    return 'No action required. Keep the device powered on until encryption completes.'
+  }
+
+  if (currentPlatform === 'darwin') {
+    if (state === 'decrypting') {
+      return 'Stop decryption and keep FileVault turned on.'
+    }
+    if (state === 'unknown') {
+      return 'Ensure FileVault is turned on.'
+    }
+    return 'Turn on FileVault.'
+  }
+
+  if (currentPlatform === 'win32') {
+    if (state === 'unknown') {
+      return 'Ensure BitLocker or Windows device encryption is turned on for the system drive.'
+    }
+    return 'Turn on BitLocker for the Windows system drive.'
+  }
+
+  if (state === 'unknown') {
+    return 'Ensure full-disk encryption is turned on.'
+  }
+
+  return 'Turn on full-disk encryption.'
 }
 
 function recommendFirewallAction(

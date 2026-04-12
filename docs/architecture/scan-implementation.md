@@ -78,6 +78,39 @@ Default to `execFile`:
 | Complex multi-line PowerShell                                   | `spawn` → `runPowerShell`        |
 | Complex multi-line bash                                         | `spawn` → `runShell`             |
 
+### PowerShell Invocation
+
+When a Windows scan check needs PowerShell, invoke it as a short-lived,
+non-interactive child process:
+
+```ts
+execFile(
+  'powershell.exe',
+  [
+    '-NoProfile',
+    '-NonInteractive',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-Command',
+    script
+  ],
+  { timeout: 10_000, windowsHide: true }
+)
+```
+
+Use `-NoProfile` so user profile scripts cannot slow down the scan, emit
+unexpected output, redefine commands, or fail before the scan command runs.
+Use `-NonInteractive` so the child process cannot block waiting for user input.
+Use `-ExecutionPolicy Bypass` only for the child process so normal local
+execution-policy restrictions do not interfere with inline scan commands. This
+does not permanently modify the user's machine.
+
+`-ExecutionPolicy Bypass` is not a full enterprise-policy bypass. It will not
+override Group Policy, AppLocker, Windows Defender Application Control,
+Constrained Language Mode, disabled PowerShell, endpoint security controls, or
+COM restrictions. If PowerShell cannot run or cannot access the required setting,
+the scan check should log the error and return `null` / `unknown`.
+
 ## Platform Differences
 
 Each scan element has a Mac and Windows implementation. Platform is detected via `os.platform()`:
@@ -91,6 +124,86 @@ const isWindows = platform() === 'win32'
 
 Mac checks use shell commands (`defaults read`, `fdesetup`, `socketfilterfw`, `system_profiler`, etc.).
 Windows checks use PowerShell (`Get-NetFirewallProfile`, `Get-BitLockerVolume`, `Get-MpComputerStatus`, etc.), registry queries (`reg query`), or `netsh` for WiFi.
+
+## Disk Encryption / BitLocker
+
+### macOS
+
+Read FileVault status with:
+
+```sh
+fdesetup status
+```
+
+Expected mapping:
+
+- `FileVault is On.` → `enabled`
+- `FileVault is Off.` → `disabled`
+- output containing `Encryption in progress` → `encrypting`
+- output containing `Decryption in progress` → `decrypting`
+- command error, timeout, or unexpected output → `unknown`
+
+`enabled` and `encrypting` are considered OK. `disabled` and `decrypting` are
+not OK and should be evaluated against policy. `unknown` should pass the scan
+but recommend that the user verify FileVault is enabled.
+
+### Windows
+
+Avoid PowerShell commands that require elevation for the normal background scan,
+such as `Get-BitLockerVolume` or `manage-bde`, unless later testing proves they
+are reliable in the target environment.
+
+The previous App version (3.xx) shipped a .NET helper executable that read the
+Windows Shell property `System.Volume.BitLockerProtection` for `C:`:
+
+```csharp
+using Microsoft.WindowsAPICodePack.Shell;
+using Microsoft.WindowsAPICodePack.Shell.PropertySystem;
+
+IShellProperty prop = ShellObject
+    .FromParsingName("C:")
+    .Properties
+    .GetProperty("System.Volume.BitLockerProtection");
+
+int? bitLockerProtectionStatus = (prop as ShellProperty<int?>).Value;
+
+if (
+    bitLockerProtectionStatus.HasValue &&
+    (
+        bitLockerProtectionStatus == 1 ||
+        bitLockerProtectionStatus == 3 ||
+        bitLockerProtectionStatus == 5
+    )
+)
+    Console.WriteLine("ON");
+else
+    Console.WriteLine("OFF");
+```
+
+For the TypeScript implementation, first try reading the same Shell property via
+PowerShell COM:
+
+```powershell
+$shell = New-Object -ComObject Shell.Application
+$systemDrive = $env:SystemDrive
+$drive = $shell.Namespace(17).ParseName($systemDrive)
+if ($null -eq $drive) {
+  Write-Output "UNKNOWN"
+  exit 0
+}
+$value = $drive.ExtendedProperty("System.Volume.BitLockerProtection")
+Write-Output $value
+```
+
+Expected mapping for Windows v1:
+
+- `1`, `3`, or `5` → `enabled`
+- any other numeric value → `disabled`
+- command failure, blank output, `UNKNOWN`, or parse failure → `unknown`
+
+If PowerShell COM proves unreliable in customer environments, add a signed native
+helper based on the previous .NET implementation and package it with the
+Electron app.
 
 ## Error Handling
 

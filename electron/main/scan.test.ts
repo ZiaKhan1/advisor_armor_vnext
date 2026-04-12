@@ -50,6 +50,7 @@ function createDevice(overrides: Partial<DeviceSnapshot> = {}): DeviceSnapshot {
     deviceId: 'device-id',
     firewallEnabled: true,
     diskEncryptionEnabled: true,
+    diskEncryptionState: 'enabled',
     automaticUpdatesEnabled: true,
     remoteLoginEnabled: false,
     winDefenderEnabled: null,
@@ -167,6 +168,152 @@ describe('evaluateDevice firewall result', () => {
       detail: 'Firewall status could not be determined.',
       fixInstruction:
         'Ensure the macOS firewall is turned on. Open System Settings > Network > Firewall and turn Firewall on if needed.'
+    })
+  })
+})
+
+describe('evaluateDevice disk encryption result', () => {
+  it('uses macOS FileVault instructions when disk encryption is disabled', () => {
+    const result = evaluateDevice(
+      createDevice({
+        diskEncryptionEnabled: false,
+        diskEncryptionState: 'disabled'
+      }),
+      createPolicy({ diskEncryption: FAIL })
+    )
+
+    const diskEncryption = result.elements.find(
+      (item) => item.key === 'diskEncryption'
+    )
+
+    expect(result.diskEncryption).toBe(FAIL)
+    expect(diskEncryption).toMatchObject({
+      status: FAIL,
+      description:
+        "Full-disk encryption protects data at rest from being accessed by a party who does not know the password or decryption key. Systems containing internal data should be encrypted. It is every employee's responsibility to keep internal data safe.",
+      descriptionSteps: [
+        { text: 'Open System Settings from the Apple menu.' },
+        {
+          text: 'Click ',
+          linkText: 'Privacy & Security',
+          linkUrl: 'x-apple.systempreferences:com.apple.preference.security',
+          suffix: '.'
+        },
+        { text: 'Scroll to FileVault.' },
+        { text: 'Turn FileVault on.' },
+        {
+          text: 'If prompted, enter your Mac administrator password or use Touch ID.'
+        },
+        {
+          text: 'Choose whether to allow your iCloud account to unlock your disk or create a recovery key. If you create a recovery key, store it in a safe place.'
+        }
+      ],
+      detail: 'FileVault is turned off.',
+      fixInstruction: 'Turn on FileVault.'
+    })
+  })
+
+  it('treats FileVault encryption in progress as passing', () => {
+    const result = evaluateDevice(
+      createDevice({
+        diskEncryptionEnabled: true,
+        diskEncryptionState: 'encrypting'
+      }),
+      createPolicy({ diskEncryption: FAIL })
+    )
+
+    const diskEncryption = result.elements.find(
+      (item) => item.key === 'diskEncryption'
+    )
+
+    expect(result.diskEncryption).toBe(PASS)
+    expect(diskEncryption).toMatchObject({
+      status: PASS,
+      detail: 'FileVault encryption is in progress.',
+      fixInstruction:
+        'No action required. Keep the device powered on until encryption completes.'
+    })
+  })
+
+  it('treats FileVault decryption in progress as not passing', () => {
+    const result = evaluateDevice(
+      createDevice({
+        diskEncryptionEnabled: false,
+        diskEncryptionState: 'decrypting'
+      }),
+      createPolicy({ diskEncryption: NUDGE })
+    )
+
+    const diskEncryption = result.elements.find(
+      (item) => item.key === 'diskEncryption'
+    )
+
+    expect(result.diskEncryption).toBe(NUDGE)
+    expect(diskEncryption).toMatchObject({
+      status: NUDGE,
+      detail: 'FileVault decryption is in progress.',
+      fixInstruction: 'Stop decryption and keep FileVault turned on.'
+    })
+  })
+
+  it('does not penalize the user when disk encryption state cannot be determined', () => {
+    const result = evaluateDevice(
+      createDevice({
+        diskEncryptionEnabled: null,
+        diskEncryptionState: 'unknown'
+      }),
+      createPolicy({ diskEncryption: FAIL })
+    )
+
+    const diskEncryption = result.elements.find(
+      (item) => item.key === 'diskEncryption'
+    )
+
+    expect(result.diskEncryption).toBe(PASS)
+    expect(diskEncryption).toMatchObject({
+      status: PASS,
+      detail: 'Disk encryption status could not be determined.',
+      fixInstruction: 'Ensure FileVault is turned on.'
+    })
+  })
+
+  it('uses Windows BitLocker instructions', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        diskEncryptionEnabled: false,
+        diskEncryptionState: 'disabled',
+        winDefenderEnabled: true
+      }),
+      createPolicy({ diskEncryption: FAIL })
+    )
+
+    const diskEncryption = result.elements.find(
+      (item) => item.key === 'diskEncryption'
+    )
+
+    expect(result.diskEncryption).toBe(FAIL)
+    expect(diskEncryption).toMatchObject({
+      status: FAIL,
+      detail:
+        'BitLocker appears to be turned off for the Windows system drive.',
+      descriptionSteps: [
+        {
+          text: 'Open ',
+          linkText: 'BitLocker Drive Encryption',
+          action: 'openDiskEncryptionSettings'
+        },
+        { text: 'Find the operating system drive, usually C:.' },
+        {
+          text: 'Turn on BitLocker or resume protection if it is suspended.'
+        },
+        { text: 'Follow the prompts to save the recovery key.' },
+        {
+          text: 'Start encryption and keep the device connected to power until encryption completes.'
+        }
+      ],
+      fixInstruction: 'Turn on BitLocker for the Windows system drive.'
     })
   })
 })

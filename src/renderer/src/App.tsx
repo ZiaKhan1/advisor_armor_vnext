@@ -467,7 +467,7 @@ function ScanRow({
               ))}
             </ol>
           ) : null}
-          {item.key === 'firewall' ? null : (
+          {item.key === 'firewall' || item.key === 'diskEncryption' ? null : (
             <>
               <p className="mt-2 font-medium text-slate-800">
                 Recommended action
@@ -498,12 +498,16 @@ function DescriptionStep({
         >
           {step.linkText}
         </a>
-      ) : step.linkText && step.action === 'openFirewallSettings' ? (
+      ) : step.linkText && step.action ? (
         <button
           className="font-medium text-sky-700 underline underline-offset-2"
           type="button"
           onClick={() => {
-            void window.deviceWatch.openFirewallSettings()
+            if (step.action === 'openFirewallSettings') {
+              void window.deviceWatch.openFirewallSettings()
+              return
+            }
+            void window.deviceWatch.openDiskEncryptionSettings()
           }}
         >
           {step.linkText}

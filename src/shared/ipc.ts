@@ -19,6 +19,7 @@ export interface DeviceWatchApi {
   openSupportEmail: () => Promise<void>
   openTroubleshooting: () => Promise<void>
   openFirewallSettings: () => Promise<void>
+  openDiskEncryptionSettings: () => Promise<void>
 }
 
 export const ipcChannels = {
@@ -31,5 +32,6 @@ export const ipcChannels = {
   openSupportEmail: 'help:open-support-email',
   openTroubleshooting: 'help:open-troubleshooting',
   openFirewallSettings: 'system:open-firewall-settings',
+  openDiskEncryptionSettings: 'system:open-disk-encryption-settings',
   stateChanged: 'app:state-changed'
 } as const
