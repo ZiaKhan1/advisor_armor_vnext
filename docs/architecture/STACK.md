@@ -15,7 +15,7 @@ created: 2026-04-05
 | Bundler | electron-vite | Established Electron + Vite workflow with lower custom build-tooling overhead than a manual setup. See `docs/architecture/build-tooling.md`. |
 | Packaging / Distribution | electron-builder | Mature, flexible, strong Mac + Windows support, handles code signing and auto-updates |
 | Auto-Updates | electron-updater | Built by electron-builder team, native GitHub releases support, handles Mac + Windows update mechanisms, supports differential updates |
-| Logging | winston + winston-daily-rotate-file | Runs in main process; renderer logs routed via IPC. Strong community backing, flexible, battle-tested. See `logging.md` for full rules. |
+| Logging | electron-log | Electron-native logging with built-in file and console transports, minimal setup, and straightforward main/renderer support. See `logging.md` for full rules. |
 | Linting | ESLint + @typescript-eslint/recommended + eslint-plugin-react + eslint-plugin-react-hooks | TypeScript and React official/standard rule sets. See `code-quality.md`. |
 | Formatting | Prettier | Format on save (VSCode) + pre-commit hook. See `code-quality.md` for config. |
 | Pre-commit | husky + lint-staged | Runs lint + format check on staged files only. Fast (~1-2 seconds per commit). |

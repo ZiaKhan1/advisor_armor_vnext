@@ -41,30 +41,39 @@ deprecated: ~
 The primary screen. Shown after scan completes and on tray icon click.
 
 #### Nav Bar
-- Blue background, white text
+- Sticky top bar; remains visible while the results page scrolls
+- Lighter blue background, white text
 - Four tabs: **Scan** | **Training** | **Report** | **News**
 - Scan tab active by default; underlined when active
 - `Training`, `Report`, and `News` are placeholder panels in v1 and may show simple "Coming soon" content
 
 #### Device Header
-- Light grey background bar
-- Device name (left) — e.g. "Zia's MacBook Pro"
-- Toggle arrow (right) — expands/collapses device info panel
+- Compact white card below the nav bar
+- Collapsed by default
+- Single-row summary:
+  - Company name
+  - User email
+  - Overall status pill
+  - Outline chevron toggle
 
 #### Device Info Panel (collapsible)
 Shown when header arrow is toggled:
-- Email, Manufacturer, Model, Platform, OS Version, Name, Serial, UDID, Status
-- Collapsed by default
+- Manufacturer
+- Platform
+- Last scanned timestamp
 
-#### Overall Status Banner
-- Card below header
-- Green checkmark + "This device is properly configured" when all PASS
-- Red/yellow variant for FAIL/NUDGE overall status
+#### Overall Status Summary
+- No standalone banner in the current layout
+- A compact inline summary appears below the policy heading:
+  - **Needs attention** for FAIL
+  - **Has recommendations** for NUDGE
+  - **Properly configured** for PASS
+- Summary text: "Review the policy items below for details and next steps."
 
 #### Scan Element List
 - Section heading: "[Company Name] Cybersecurity Policy"
 - Each element is an accordion row:
-  - Status icon (green ✓ / red ✗ / yellow ⚠) + element name + expand arrow (◄/▼)
+  - Status icon (green ✓ / red ✗ / yellow !) + element name + detail text + outline chevron
   - Collapsed by default
   - Expanded: description text + fix instructions + relevant data (e.g. version comparison table)
   - Fix instructions are hardcoded per element per platform (Mac/Windows)
@@ -84,8 +93,10 @@ Scan elements (in order):
 11. Applications
 
 #### Footer
-- Last scanned timestamp + scan duration (e.g. "Last scanned 2 hours ago (8.81 seconds)")
-- Fixed bottom bar: **RESCAN** button (centre) | **LOG OUT** button (right)
+- Fixed bottom bar; remains visible while the results page scrolls
+- Last scanned timestamp on the left
+- **RESCAN** and **LOG OUT** buttons on the right
+- Main content includes bottom padding so the footer does not cover the final scan rows
 
 #### Logout Confirmation Dialog
 - Modal overlay on main screen
@@ -98,14 +109,15 @@ Scan elements (in order):
 ## Tray / Context Menu
 
 Right-click on tray icon:
-- Copy (⌘C)
+- Show AdvisorArmor
+- Rescan
 - Check for Update
 - **Help** (submenu):
   - Email Support — opens `config.supportEmail`
   - Troubleshooting — opens `config.troubleshootingUrl`
   - App version (disabled label)
-  - Copy Debug Info — copies device + scan info to clipboard
-- Quit (⌘Q)
+  - Copy Debug Info — disabled in v1
+- Quit
 
 ---
 
@@ -114,7 +126,7 @@ Right-click on tray icon:
 | UI Element | shadcn/ui Component |
 |---|---|
 | Scan element list | Accordion |
-| Overall status banner, device info panel, version comparison | Card |
+| Device header, device info panel, version comparison | Card |
 | Login / Verify / Rescan / Logout buttons | Button |
 | Logout confirmation | Dialog |
 | Scan / Training / Report / News | Tabs |

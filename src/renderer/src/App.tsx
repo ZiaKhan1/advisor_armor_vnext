@@ -41,6 +41,7 @@ export function App(): JSX.Element {
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
   const [tab, setTab] = useState<TabKey>('scan')
+  const [companyDetailsExpanded, setCompanyDetailsExpanded] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
 
   useEffect(() => {
@@ -205,12 +206,12 @@ export function App(): JSX.Element {
   const result = state.currentScan.result
   return (
     <main className="min-h-screen bg-slate-100 text-slate-900">
-      <div className="bg-brand-700 px-6 py-4 text-white">
+      <div className="sticky top-0 z-20 bg-brand-500 px-6 py-3 text-white shadow-sm">
         <div className="mx-auto flex max-w-6xl gap-6">
           {(['scan', 'training', 'report', 'news'] as const).map(item => (
             <button
               key={item}
-              className={`border-b-2 pb-2 text-sm font-semibold uppercase tracking-[0.2em] ${
+              className={`border-b-2 pb-1.5 text-sm font-semibold uppercase tracking-[0.2em] ${
                 item === tab ? 'border-white' : 'border-transparent text-white/70'
               }`}
               type="button"
@@ -222,7 +223,7 @@ export function App(): JSX.Element {
         </div>
       </div>
 
-      <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="mx-auto max-w-6xl px-6 py-8 pb-28">
         {tab !== 'scan' ? (
           <section className="rounded-3xl bg-white p-10 shadow-panel">
             <h2 className="text-2xl font-semibold capitalize">{tab}</h2>
@@ -231,41 +232,34 @@ export function App(): JSX.Element {
         ) : (
           <>
             <section className="rounded-3xl bg-white shadow-panel">
-              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Device</p>
-                  <h1 className="text-2xl font-semibold">
+              <button
+                className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
+                type="button"
+                onClick={() => setCompanyDetailsExpanded(current => !current)}
+              >
+                <div className="min-w-0 flex-1">
+                  <h1 className="truncate text-xl font-semibold">
                     {state.currentScan.companyName ?? state.user?.companyName ?? 'AdvisorArmor'}
                   </h1>
-                  <p className="mt-1 text-slate-500">{state.user?.email}</p>
+                  <p className="truncate text-sm text-slate-500">{state.user?.email}</p>
                 </div>
-                <div className="rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-600">
-                  {state.currentScan.result?.status ?? state.lastScan?.overallStatus ?? 'PASS'}
+                <div className="flex items-center gap-4">
+                  <div className="rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-600">
+                    {state.currentScan.result?.status ?? state.lastScan?.overallStatus ?? 'PASS'}
+                  </div>
+                  <ExpandChevron expanded={companyDetailsExpanded} />
                 </div>
-              </div>
-              <div className="grid gap-4 px-6 py-5 md:grid-cols-3">
-                <InfoItem label="Manufacturer" value={navigator.platform.includes('Mac') ? 'Apple' : 'Microsoft'} />
-                <InfoItem label="Platform" value={navigator.platform} />
-                <InfoItem
-                  label="Last scanned"
-                  value={state.lastScan ? formatTimestamp(state.lastScan.completedAt) : 'Not yet'}
-                />
-              </div>
-            </section>
-
-            <section className={`mt-6 rounded-3xl p-6 text-white ${statusBannerClass(result?.status)}`}>
-              <h2 className="text-2xl font-semibold">
-                {result?.status === FAIL
-                  ? 'This device needs attention'
-                  : result?.status === NUDGE
-                    ? 'This device has recommendations'
-                    : 'This device is properly configured'}
-              </h2>
-              <p className="mt-2 text-white/85">
-                {result
-                  ? 'Review each policy item below for details and remediation guidance.'
-                  : 'A scan result will appear here after the first successful run.'}
-              </p>
+              </button>
+              {companyDetailsExpanded ? (
+                <div className="grid gap-4 border-t border-slate-100 px-6 py-5 md:grid-cols-3">
+                  <InfoItem label="Manufacturer" value={navigator.platform.includes('Mac') ? 'Apple' : 'Microsoft'} />
+                  <InfoItem label="Platform" value={navigator.platform} />
+                  <InfoItem
+                    label="Last scanned"
+                    value={state.lastScan ? formatTimestamp(state.lastScan.completedAt) : 'Not yet'}
+                  />
+                </div>
+              ) : null}
             </section>
 
             {submissionMessage ? (
@@ -281,10 +275,25 @@ export function App(): JSX.Element {
             ) : null}
 
             <section className="mt-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-semibold">
-                  {state.currentScan.companyName ?? state.user?.companyName ?? 'Company'} Cybersecurity Policy
-                </h3>
+              <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">
+                    {state.currentScan.companyName ?? state.user?.companyName ?? 'Company'} Cybersecurity Policy
+                  </h3>
+                  <p className={`mt-1 text-sm ${statusSummaryClass(result?.status)}`}>
+                    <span className="font-medium">
+                      {result?.status === FAIL
+                        ? 'Needs attention'
+                        : result?.status === NUDGE
+                          ? 'Has recommendations'
+                          : 'Properly configured'}
+                    </span>
+                    {' '}
+                    {result
+                      ? 'Review the policy items below for details and next steps.'
+                      : 'A scan result will appear here after the first successful run.'}
+                  </p>
+                </div>
                 {state.currentScan.durationMs ? (
                   <span className="text-sm text-slate-500">
                     Scan duration {(state.currentScan.durationMs / 1000).toFixed(2)} seconds
@@ -305,7 +314,8 @@ export function App(): JSX.Element {
               </div>
             </section>
 
-            <footer className="mt-8 flex flex-col gap-4 rounded-3xl bg-white p-6 shadow-panel md:flex-row md:items-center md:justify-between">
+            <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/95 px-6 py-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur">
+              <div className="mx-auto flex max-w-6xl flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="text-sm text-slate-500">
                 {state.lastScan
                   ? `Last scanned ${formatTimestamp(state.lastScan.completedAt)}`
@@ -313,7 +323,7 @@ export function App(): JSX.Element {
               </div>
               <div className="flex gap-3">
                 <button
-                  className="rounded-2xl bg-brand-500 px-5 py-3 font-semibold text-white"
+                  className="rounded-2xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white"
                   type="button"
                   onClick={() => {
                     void window.deviceWatch.rescan()
@@ -322,7 +332,7 @@ export function App(): JSX.Element {
                   RESCAN
                 </button>
                 <button
-                  className="rounded-2xl border border-slate-200 px-5 py-3 font-semibold text-slate-700"
+                  className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700"
                   type="button"
                   onClick={() => {
                     void window.deviceWatch.logout()
@@ -330,6 +340,7 @@ export function App(): JSX.Element {
                 >
                   LOG OUT
                 </button>
+              </div>
               </div>
             </footer>
           </>
@@ -348,6 +359,30 @@ function InfoItem({ label, value }: { label: string; value: string }): JSX.Eleme
   )
 }
 
+function ExpandChevron({ expanded }: { expanded: boolean }): JSX.Element {
+  return (
+    <span
+      aria-hidden="true"
+      className={`text-slate-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+    >
+      <svg
+        className="h-3 w-5"
+        viewBox="0 0 20 12"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M2 2L10 10L18 2"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </span>
+  )
+}
+
 function ScanRow({
   item,
   expanded,
@@ -360,25 +395,25 @@ function ScanRow({
   return (
     <article className="overflow-hidden rounded-3xl bg-white shadow-panel">
       <button
-        className="flex w-full items-center justify-between px-5 py-4 text-left"
+        className="flex w-full items-center justify-between px-5 py-3 text-left"
         type="button"
         onClick={onToggle}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${statusPillClass(item.status)}`}>
             {item.status === FAIL ? '✕' : item.status === NUDGE ? '!' : '✓'}
           </span>
           <div>
             <h4 className="font-semibold text-slate-900">{item.title}</h4>
-            <p className="text-sm text-slate-500">{item.detail}</p>
+            <p className="text-sm leading-5 text-slate-500">{item.detail}</p>
           </div>
         </div>
-        <span className="text-slate-400">{expanded ? '−' : '+'}</span>
+        <ExpandChevron expanded={expanded} />
       </button>
       {expanded ? (
-        <div className="border-t border-slate-100 px-5 py-4 text-sm text-slate-600">
+        <div className="border-t border-slate-100 px-5 py-3 text-sm text-slate-600">
           <p>{item.description}</p>
-          <p className="mt-3 font-medium text-slate-800">Recommended action</p>
+          <p className="mt-2 font-medium text-slate-800">Recommended action</p>
           <p className="mt-1">{item.fixInstruction}</p>
         </div>
       ) : null}
@@ -386,14 +421,14 @@ function ScanRow({
   )
 }
 
-function statusBannerClass(status: string | undefined): string {
+function statusSummaryClass(status: string | undefined): string {
   if (status === FAIL) {
-    return 'bg-danger'
+    return 'text-danger'
   }
   if (status === NUDGE) {
-    return 'bg-warning'
+    return 'text-warning'
   }
-  return 'bg-success'
+  return 'text-success'
 }
 
 function statusPillClass(status: string): string {

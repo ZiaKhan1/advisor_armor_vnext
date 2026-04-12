@@ -60,7 +60,7 @@ Written after a successful completed scan. Used only for lightweight last-scan m
 ## Behaviour Notes
 
 - `scanIntervalHours` is always written after a successful policy fetch — the file value reflects the last known policy
-- `diagnosticLogLevel` is configurable at runtime via IPC (no restart required) — see `docs/architecture/logging.md`
+- `diagnosticLogLevel` is stored in `settings.json`, but runtime log-level switching is not implemented yet — see `docs/architecture/logging.md`
 - `storage/last-scan.json` stores only minimal metadata for the latest successful completed scan
 - v1 does not persist full scan results, normalized policy snapshots, device snapshots, or raw command output in `storage/last-scan.json`
 - If `settings.json` is missing or malformed, all keys fall back to their defaults
