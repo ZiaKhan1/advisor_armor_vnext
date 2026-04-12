@@ -9,7 +9,7 @@ deprecated: ~
 
 DeviceWatch is designed to be adopted by a single organisation. The codebase is generic by default (mock mode) and all organisation-specific values are committed in one config file that is switched in at build time.
 
-Use `DeviceWatch` for generic code, docs, and architecture naming. Use client-specific names such as `AdvisorArmor` only where branding or backend contracts require them.
+Use `DeviceWatch` for generic code, docs, and architecture naming. Use client-specific names such as `AdvisorArmor` where branding, backend contracts, installer metadata, app id, or runtime OS app identity require them.
 
 Within the codebase, prefer generic names for shared concepts. For example, keep version data as `appVersion` internally and map it to the backend field `advisorArmorVersion` only when constructing API requests.
 
@@ -134,17 +134,19 @@ assets/logo.png
 
 ## App Name & Icon (electron-builder)
 
-`productName` and `appId` live in the `build` section of `package.json`. All other electron-builder settings are in `electron-builder.yml`.
+`productName` and `appId` live in `electron-builder.yml`.
 
 ```json
 // package.json
 {
-  "name": "devicewatch",
-  "build": {
-    "productName": "Acme Security Monitor",
-    "appId": "com.acme.devicewatch"
-  }
+  "name": "advisorarmor"
 }
+```
+
+```yaml
+# electron-builder.yml
+appId: com.advisorarmor.desktop
+productName: AdvisorArmor
 ```
 
 ## What Is Configurable
@@ -160,6 +162,6 @@ assets/logo.png
 | Support email                    | `src/config.ts`                                |
 | Troubleshooting URL              | `src/config.ts`                                |
 | In-app logo                      | `assets/logo.png`                              |
-| OS app name / installer name     | `package.json` → `build.productName`           |
-| App ID                           | `package.json` → `build.appId`                 |
+| OS app name / installer name     | `electron-builder.yml` → `productName`         |
+| App ID                           | `electron-builder.yml` → `appId`               |
 | App icon (dock/taskbar)          | `assets/icon/`                                 |

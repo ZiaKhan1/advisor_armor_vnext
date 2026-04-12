@@ -24,8 +24,8 @@ This file records planning decisions that were previously ambiguous across docs.
 - `Training`, `Report`, and `News` tabs are placeholders in v1.
 - There is no separate API authentication layer in v1 beyond the email + verification code onboarding flow.
 - `DeviceWatch` is the generic product/codebase name.
-- `AdvisorArmor` should be used only where organisation-specific branding or backend contract values require it, such as API field names, visible app name, and installer branding.
-- Internal code should prefer generic names such as `appVersion` and map them to backend-specific field names such as `advisorArmorVersion` at the API boundary.
+- `AdvisorArmor` should be used where organisation-specific branding or runtime OS identity requires it, such as API field names, visible app name, installer branding, app id, and `app.getPath('userData')` storage paths.
+- Internal code should prefer generic names such as `DeviceWatchApi` and `appVersion`, and map them to backend-specific field names such as `advisorArmorVersion` at the API boundary.
 - Backend endpoints are configured as five fully independent URLs in `src/config.ts`.
 - Mock mode covers only the five backend APIs and uses fixed in-code responses.
 - Backend calls use explicit client-side timeouts: 20 seconds for onboarding/submission calls and 30 seconds for policy fetch.

@@ -8,6 +8,7 @@ import type {
 } from '@shared/models'
 import { FAIL, NUDGE, PASS, type PolicyStatus } from '@shared/status'
 import { config } from '../../src/config'
+import { readFirewallEnabled } from './scan-checks/firewall'
 
 async function resolvePublicIp(): Promise<string> {
   for (const url of [
@@ -29,6 +30,7 @@ async function resolvePublicIp(): Promise<string> {
 export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
   const currentPlatform = platform()
   const publicIp = await resolvePublicIp()
+  const firewallEnabled = await readFirewallEnabled(currentPlatform)
 
   const wifiConnections: WifiConnection[] = [
     {
@@ -57,8 +59,8 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
     hardwareModel: machine(),
     hardwareSerial: 'PROVISIONAL-SERIAL',
     deviceId: 'PROVISIONAL-DEVICE-ID',
+    firewallEnabled,
     // Provisional bottom-layer values are acceptable in v1 scaffolding.
-    firewallEnabled: true,
     diskEncryptionEnabled: true,
     automaticUpdatesEnabled: false,
     remoteLoginEnabled: false,
@@ -236,10 +238,8 @@ export function evaluateDevice(
       'firewall',
       'Firewall',
       firewall,
-      device.firewallEnabled
-        ? 'Firewall appears enabled.'
-        : 'Firewall appears disabled.',
-      'Enable the system firewall in device settings.'
+      describeFirewallState(device.platform, device.firewallEnabled, firewall),
+      recommendFirewallAction(device.platform, device.firewallEnabled, firewall)
     ),
     buildElement(
       'diskEncryption',
@@ -376,4 +376,60 @@ function describeAppState(
     )
   }
   return parts.join('. ')
+}
+
+function describeFirewallState(
+  currentPlatform: string,
+  enabled: boolean | null,
+  status: PolicyStatus
+): string {
+  if (enabled == null) {
+    return 'Firewall status could not be determined.'
+  }
+
+  if (currentPlatform === 'darwin') {
+    if (enabled) {
+      return 'The macOS firewall is turned on.'
+    }
+
+    if (status === FAIL) {
+      return "The macOS firewall is turned off. This device does not meet your organisation's firewall policy."
+    }
+
+    return 'The macOS firewall is turned off. Enabling it helps protect this device from unwanted network connections, especially on public or unsecured Wi-Fi networks.'
+  }
+
+  if (currentPlatform === 'win32') {
+    if (enabled) {
+      return 'Windows Defender Firewall is turned on for the required network profiles.'
+    }
+
+    if (status === FAIL) {
+      return "One or more Windows Defender Firewall profiles appear to be turned off. This device does not meet your organisation's firewall policy."
+    }
+
+    return 'One or more Windows Defender Firewall profiles appear to be turned off. The firewall helps protect this device from unwanted network connections, especially on public or unsecured networks.'
+  }
+
+  return enabled ? 'Firewall appears enabled.' : 'Firewall appears disabled.'
+}
+
+function recommendFirewallAction(
+  currentPlatform: string,
+  enabled: boolean | null,
+  status: PolicyStatus
+): string {
+  if (enabled || enabled == null || status === PASS) {
+    return 'No action required.'
+  }
+
+  if (currentPlatform === 'darwin') {
+    return 'Open System Settings > Network > Firewall and turn Firewall on.'
+  }
+
+  if (currentPlatform === 'win32') {
+    return 'Open Windows Security > Firewall & network protection and turn firewall on for the required profiles.'
+  }
+
+  return 'Enable the system firewall in device settings.'
 }

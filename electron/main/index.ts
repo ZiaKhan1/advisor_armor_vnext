@@ -6,10 +6,11 @@ import { logger } from './logging'
 import { createTray } from './tray'
 import { createMainWindow } from './window'
 
+app.setName(config.productName)
+
 const controller = new AppController()
 
 async function bootstrap(): Promise<void> {
-  app.setName(config.productName)
   app.setLoginItemSettings({
     openAtLogin: true
   })

@@ -9,8 +9,8 @@ deprecated: ~
 
 All local data lives under `app.getPath('userData')`:
 
-- **macOS:** `~/Library/Application Support/<productName>/`
-- **Windows:** `%APPDATA%\<productName>\`
+- **macOS:** `~/Library/Application Support/AdvisorArmor/`
+- **Windows:** `%APPDATA%\AdvisorArmor\`
 
 ## Files
 

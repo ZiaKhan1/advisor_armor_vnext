@@ -1,4 +1,4 @@
-appId: com.advisorarmor.devicewatch
+appId: com.advisorarmor.desktop
 productName: AdvisorArmor
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 directories:

@@ -1,7 +1,7 @@
 {
-  "name": "devicewatch",
+  "name": "advisorarmor",
   "version": "0.1.0",
-  "description": "DeviceWatch Electron desktop client",
+  "description": "AdvisorArmor Electron desktop client",
   "main": "./out/main/index.js",
   "author": "OpenAI Codex",
   "license": "UNLICENSED",
