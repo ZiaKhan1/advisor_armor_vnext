@@ -2,6 +2,7 @@ import { hostname, machine, platform, release } from 'node:os'
 import type {
   DeviceSnapshot,
   NormalizedPolicy,
+  ScanElementDescriptionStep,
   ScanElementResult,
   ScanResultData,
   WifiConnection
@@ -9,6 +10,9 @@ import type {
 import { FAIL, NUDGE, PASS, type PolicyStatus } from '@shared/status'
 import { config } from '../../src/config'
 import { readFirewallEnabled } from './scan-checks/firewall'
+
+const FIREWALL_DESCRIPTION =
+  'Firewalls control network traffic into and out of a system. Enabling the firewall on your device can prevent network-based attacks on your system and is especially important if you make use of unsecured wireless networks (such as at coffee shops and airports).'
 
 async function resolvePublicIp(): Promise<string> {
   for (const url of [
@@ -239,7 +243,9 @@ export function evaluateDevice(
       'Firewall',
       firewall,
       describeFirewallState(device.platform, device.firewallEnabled, firewall),
-      recommendFirewallAction(device.platform, device.firewallEnabled, firewall)
+      recommendFirewallAction(device.platform, device.firewallEnabled, firewall),
+      FIREWALL_DESCRIPTION,
+      getFirewallDescriptionSteps(device.platform)
     ),
     buildElement(
       'diskEncryption',
@@ -347,16 +353,59 @@ function buildElement(
   title: string,
   status: PolicyStatus,
   detail: string,
-  fixInstruction: string
+  fixInstruction: string,
+  description = title,
+  descriptionSteps?: ScanElementDescriptionStep[]
 ): ScanElementResult {
   return {
     key,
     title,
     status,
-    description: title,
+    description,
+    descriptionSteps,
     detail,
     fixInstruction
   }
+}
+
+function getFirewallDescriptionSteps(
+  currentPlatform: string
+): ScanElementDescriptionStep[] {
+  if (currentPlatform === 'darwin') {
+    return [
+      { text: 'Choose System Settings from the Apple menu.' },
+      {
+        text: 'Click ',
+        linkText: 'Network',
+        linkUrl: 'x-apple.systempreferences:com.apple.Network-Settings.extension',
+        suffix: '.'
+      },
+      { text: 'Click Firewall.' },
+      { text: 'Turn Firewall on.' },
+      {
+        text: 'If prompted, enter your Mac administrator password or use Touch ID.'
+      }
+    ]
+  }
+
+  if (currentPlatform === 'win32') {
+    return [
+      {
+        text: 'Open ',
+        linkText: 'Windows Defender Firewall',
+        linkUrl: 'ps://wf.msc'
+      },
+      {
+        text: 'Click Windows Defender Firewall Properties.'
+      },
+      {
+        text: 'On the Domain Profile, Private Profile, and Public Profile tabs, set Firewall state to On (recommended).'
+      },
+      { text: 'Click OK.' }
+    ]
+  }
+
+  return [{ text: 'Open device settings and ensure the system firewall is on.' }]
 }
 
 function describeAppState(
@@ -419,16 +468,32 @@ function recommendFirewallAction(
   enabled: boolean | null,
   status: PolicyStatus
 ): string {
-  if (enabled || enabled == null || status === PASS) {
+  if (enabled) {
     return 'No action required.'
   }
 
   if (currentPlatform === 'darwin') {
+    if (enabled == null) {
+      return 'Ensure the macOS firewall is turned on. Open System Settings > Network > Firewall and turn Firewall on if needed.'
+    }
+
     return 'Open System Settings > Network > Firewall and turn Firewall on.'
   }
 
   if (currentPlatform === 'win32') {
+    if (enabled == null) {
+      return 'Ensure Windows Defender Firewall is turned on. Open Windows Security > Firewall & network protection and turn firewall on for the required profiles if needed.'
+    }
+
     return 'Open Windows Security > Firewall & network protection and turn firewall on for the required profiles.'
+  }
+
+  if (enabled == null) {
+    return 'Ensure the system firewall is enabled in device settings.'
+  }
+
+  if (status === PASS) {
+    return 'No action required.'
   }
 
   return 'Enable the system firewall in device settings.'

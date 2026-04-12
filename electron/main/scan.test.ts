@@ -76,6 +76,23 @@ describe('evaluateDevice firewall result', () => {
     expect(result.firewall).toBe(NUDGE)
     expect(firewall).toMatchObject({
       status: NUDGE,
+      description:
+        'Firewalls control network traffic into and out of a system. Enabling the firewall on your device can prevent network-based attacks on your system and is especially important if you make use of unsecured wireless networks (such as at coffee shops and airports).',
+      descriptionSteps: [
+        { text: 'Choose System Settings from the Apple menu.' },
+        {
+          text: 'Click ',
+          linkText: 'Network',
+          linkUrl:
+            'x-apple.systempreferences:com.apple.Network-Settings.extension',
+          suffix: '.'
+        },
+        { text: 'Click Firewall.' },
+        { text: 'Turn Firewall on.' },
+        {
+          text: 'If prompted, enter your Mac administrator password or use Touch ID.'
+        }
+      ],
       detail:
         'The macOS firewall is turned off. Enabling it helps protect this device from unwanted network connections, especially on public or unsecured Wi-Fi networks.',
       fixInstruction:
@@ -117,6 +134,20 @@ describe('evaluateDevice firewall result', () => {
       status: FAIL,
       detail:
         "One or more Windows Defender Firewall profiles appear to be turned off. This device does not meet your organisation's firewall policy.",
+      descriptionSteps: [
+        {
+          text: 'Open ',
+          linkText: 'Windows Defender Firewall',
+          linkUrl: 'ps://wf.msc'
+        },
+        {
+          text: 'Click Windows Defender Firewall Properties.'
+        },
+        {
+          text: 'On the Domain Profile, Private Profile, and Public Profile tabs, set Firewall state to On (recommended).'
+        },
+        { text: 'Click OK.' }
+      ],
       fixInstruction:
         'Open Windows Security > Firewall & network protection and turn firewall on for the required profiles.'
     })
@@ -134,7 +165,8 @@ describe('evaluateDevice firewall result', () => {
     expect(firewall).toMatchObject({
       status: PASS,
       detail: 'Firewall status could not be determined.',
-      fixInstruction: 'No action required.'
+      fixInstruction:
+        'Ensure the macOS firewall is turned on. Open System Settings > Network > Firewall and turn Firewall on if needed.'
     })
   })
 })

@@ -115,8 +115,16 @@ export interface ScanElementResult {
   title: string
   status: PolicyStatus
   description: string
+  descriptionSteps?: ScanElementDescriptionStep[]
   detail: string
   fixInstruction: string
+}
+
+export interface ScanElementDescriptionStep {
+  text: string
+  linkText?: string
+  linkUrl?: string
+  suffix?: string
 }
 
 export interface ScanResultData {

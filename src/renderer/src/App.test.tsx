@@ -103,6 +103,15 @@ function createResultsState(
             detail: 'Firewall is disabled.',
             description:
               'Firewall protects this device from unwanted inbound traffic.',
+            descriptionSteps: [
+              {
+                text: 'Click ',
+                linkText: 'Network',
+                linkUrl:
+                  'x-apple.systempreferences:com.apple.Network-Settings.extension',
+                suffix: '.'
+              }
+            ],
             fixInstruction: 'Enable the firewall in system settings.'
           }),
           createScanElement({
@@ -190,14 +199,36 @@ it('expands and collapses scan row details', async () => {
 
   await user.click(firewallRow)
 
-  expect(screen.getByText('Recommended action')).toBeInTheDocument()
+  expect(screen.queryByText('Recommended action')).not.toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Network' })).toHaveAttribute(
+    'href',
+    'x-apple.systempreferences:com.apple.Network-Settings.extension'
+  )
   expect(
-    screen.getByText('Enable the firewall in system settings.')
-  ).toBeInTheDocument()
+    screen.queryByText('Enable the firewall in system settings.')
+  ).not.toBeInTheDocument()
 
   await user.click(firewallRow)
 
   expect(screen.queryByText('Recommended action')).not.toBeInTheDocument()
+})
+
+it('shows recommended action for non-firewall scan rows', async () => {
+  const user = userEvent.setup()
+  installDeviceWatch(createResultsState())
+
+  render(<App />)
+
+  const applicationsRow = await screen.findByRole('button', {
+    name: /applications/i
+  })
+
+  await user.click(applicationsRow)
+
+  expect(screen.getByText('Recommended action')).toBeInTheDocument()
+  expect(
+    screen.getByText('Install an approved password manager.')
+  ).toBeInTheDocument()
 })
 
 it('keeps footer actions available', async () => {

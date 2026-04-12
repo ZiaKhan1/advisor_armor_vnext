@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { RendererState, ScanElementResult } from '@shared/models'
+import type {
+  RendererState,
+  ScanElementDescriptionStep,
+  ScanElementResult
+} from '@shared/models'
 import { FAIL, NUDGE } from '@shared/status'
 
 type TabKey = 'scan' | 'training' | 'report' | 'news'
@@ -456,11 +460,47 @@ function ScanRow({
       {expanded ? (
         <div className="border-t border-slate-100 px-5 py-3 text-sm text-slate-600">
           <p>{item.description}</p>
-          <p className="mt-2 font-medium text-slate-800">Recommended action</p>
-          <p className="mt-1">{item.fixInstruction}</p>
+          {item.descriptionSteps && item.descriptionSteps.length > 0 ? (
+            <ol className="mt-3 list-decimal space-y-1 pl-5">
+              {item.descriptionSteps.map((step, index) => (
+                <DescriptionStep key={`${item.key}-step-${index}`} step={step} />
+              ))}
+            </ol>
+          ) : null}
+          {item.key === 'firewall' ? null : (
+            <>
+              <p className="mt-2 font-medium text-slate-800">
+                Recommended action
+              </p>
+              <p className="mt-1">{item.fixInstruction}</p>
+            </>
+          )}
         </div>
       ) : null}
     </article>
+  )
+}
+
+function DescriptionStep({
+  step
+}: {
+  step: ScanElementDescriptionStep
+}): JSX.Element {
+  return (
+    <li>
+      {step.text}
+      {step.linkText && step.linkUrl ? (
+        <a
+          className="font-medium text-sky-700 underline underline-offset-2"
+          href={step.linkUrl}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {step.linkText}
+        </a>
+      ) : null}
+      {step.suffix}
+    </li>
   )
 }
 
