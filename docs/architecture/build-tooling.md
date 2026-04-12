@@ -91,6 +91,18 @@ This is enabled only for unpackaged/dev runs. Production builds disable renderer
 
 Renderer DevTools show renderer-process activity. Main-process work, including backend API calls made from `electron/main/backend.ts`, scan execution, updater logs, and filesystem access, is not expected to appear in the renderer DevTools Network panel. Those operations should be inspected through main-process logs and external proxy/debug tools when needed.
 
+### 3.2 Future: React DevTools Extension
+
+React Developer Tools inside Electron's Chromium DevTools is useful for inspecting renderer component state, props, hooks, and profiler data. The preferred future direction is to evaluate `electron-devtools-installer` as a dev-only helper for installing the React Developer Tools browser extension into Electron.
+
+This is intentionally not implemented yet. If revisited, keep it constrained:
+
+- it should run only in unpackaged development mode
+- `npm run dev` should remain the only command needed
+- it should not use the standalone `react-devtools` process
+- installation failures should log a warning and must not block app startup
+- verify that the DevTools **Components** and **Profiler** tabs appear, not just that the extension install logs success
+
 ### 4. Produce Stable Outputs for Packaging
 
 Bundled outputs should be predictable and easy for `electron-builder` to consume.

@@ -1,5 +1,6 @@
 import { BrowserWindow, Menu, app, shell } from 'electron'
 import { join } from 'node:path'
+import { logger } from './logging'
 
 export function createMainWindow(): BrowserWindow {
   const isDevelopment = !app.isPackaged
@@ -28,19 +29,19 @@ export function createMainWindow(): BrowserWindow {
   })
 
   window.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
-    console.error('Main window failed to load', { errorCode, errorDescription })
+    logger.error('Main window failed to load', { errorCode, errorDescription })
   })
 
   window.webContents.on('did-finish-load', () => {
-    console.info('Main window finished load')
+    logger.info('Main window finished load')
   })
 
-  window.webContents.on('console-message', (_event, level, message, line, sourceId) => {
-    console.info('Renderer console message', { level, message, line, sourceId })
+  window.webContents.on('console-message', ({ level, message, lineNumber, sourceId }) => {
+    logger.info('Renderer console message', { level, message, lineNumber, sourceId })
   })
 
   window.webContents.on('render-process-gone', (_event, details) => {
-    console.error('Renderer process gone', details)
+    logger.error('Renderer process gone', details)
   })
 
   if (isDevelopment) {
