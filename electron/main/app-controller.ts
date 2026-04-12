@@ -253,8 +253,15 @@ export class AppController extends EventEmitter {
   async openDiskEncryptionSettings(): Promise<void> {
     if (process.platform === 'win32') {
       const child = spawn(
-        'control.exe',
-        ['/name', 'Microsoft.BitLockerDriveEncryption'],
+        'cmd.exe',
+        [
+          '/c',
+          'start',
+          '',
+          'control.exe',
+          '/name',
+          'Microsoft.BitLockerDriveEncryption'
+        ],
         {
           detached: true,
           stdio: 'ignore',
