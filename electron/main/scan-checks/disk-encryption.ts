@@ -24,7 +24,7 @@ export function isDiskEncryptionOk(state: DiskEncryptionState): boolean | null {
     return true
   }
 
-  if (state === 'disabled' || state === 'decrypting') {
+  if (state === 'disabled' || state === 'decrypting' || state === 'suspended') {
     return false
   }
 
@@ -69,7 +69,11 @@ export function parseWindowsDiskEncryptionState(
     return 'unknown'
   }
 
-  return [1, 3, 5].includes(value) ? 'enabled' : 'disabled'
+  if (value === 5) {
+    return 'suspended'
+  }
+
+  return [1, 3].includes(value) ? 'enabled' : 'disabled'
 }
 
 async function readMacDiskEncryptionState(): Promise<DiskEncryptionState> {

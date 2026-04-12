@@ -79,6 +79,7 @@ export type DiskEncryptionState =
   | 'disabled'
   | 'encrypting'
   | 'decrypting'
+  | 'suspended'
   | 'unknown'
 
 export interface DeviceSnapshot {

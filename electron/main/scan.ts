@@ -545,6 +545,9 @@ function describeDiskEncryptionState(
     if (state === 'enabled') {
       return 'BitLocker appears to be turned on for the Windows system drive.'
     }
+    if (state === 'suspended') {
+      return 'BitLocker appears to be suspended for the Windows system drive.'
+    }
     if (state === 'disabled') {
       return 'BitLocker appears to be turned off for the Windows system drive.'
     }
@@ -555,7 +558,7 @@ function describeDiskEncryptionState(
     return 'Disk encryption appears enabled.'
   }
 
-  if (state === 'disabled' || state === 'decrypting') {
+  if (state === 'disabled' || state === 'decrypting' || state === 'suspended') {
     return 'Disk encryption appears disabled.'
   }
 
@@ -585,6 +588,9 @@ function recommendDiskEncryptionAction(
   }
 
   if (currentPlatform === 'win32') {
+    if (state === 'suspended') {
+      return 'Resume BitLocker protection for the Windows system drive.'
+    }
     if (state === 'unknown') {
       return 'Ensure BitLocker or Windows device encryption is turned on for the system drive.'
     }

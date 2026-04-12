@@ -35,7 +35,10 @@ describe('parseWindowsDiskEncryptionState', () => {
   it('detects enabled BitLocker Shell property values', () => {
     expect(parseWindowsDiskEncryptionState('1')).toBe('enabled')
     expect(parseWindowsDiskEncryptionState('3')).toBe('enabled')
-    expect(parseWindowsDiskEncryptionState('5')).toBe('enabled')
+  })
+
+  it('detects suspended BitLocker Shell property value', () => {
+    expect(parseWindowsDiskEncryptionState('5')).toBe('suspended')
   })
 
   it('detects disabled BitLocker Shell property values', () => {
@@ -57,6 +60,7 @@ describe('isDiskEncryptionOk', () => {
     expect(isDiskEncryptionOk('encrypting')).toBe(true)
     expect(isDiskEncryptionOk('disabled')).toBe(false)
     expect(isDiskEncryptionOk('decrypting')).toBe(false)
+    expect(isDiskEncryptionOk('suspended')).toBe(false)
     expect(isDiskEncryptionOk('unknown')).toBeNull()
   })
 })

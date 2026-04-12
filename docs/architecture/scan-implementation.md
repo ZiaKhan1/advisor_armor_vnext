@@ -197,7 +197,8 @@ Write-Output $value
 
 Expected mapping for Windows v1:
 
-- `1`, `3`, or `5` → `enabled`
+- `1` or `3` → `enabled`
+- `5` → `suspended`
 - any other numeric value → `disabled`
 - command failure, blank output, `UNKNOWN`, or parse failure → `unknown`
 

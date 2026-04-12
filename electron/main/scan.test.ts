@@ -316,4 +316,30 @@ describe('evaluateDevice disk encryption result', () => {
       fixInstruction: 'Turn on BitLocker for the Windows system drive.'
     })
   })
+
+  it('treats suspended BitLocker protection as not passing', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        diskEncryptionEnabled: false,
+        diskEncryptionState: 'suspended',
+        winDefenderEnabled: true
+      }),
+      createPolicy({ diskEncryption: FAIL })
+    )
+
+    const diskEncryption = result.elements.find(
+      (item) => item.key === 'diskEncryption'
+    )
+
+    expect(result.diskEncryption).toBe(FAIL)
+    expect(diskEncryption).toMatchObject({
+      status: FAIL,
+      detail:
+        'BitLocker appears to be suspended for the Windows system drive.',
+      fixInstruction:
+        'Resume BitLocker protection for the Windows system drive.'
+    })
+  })
 })
