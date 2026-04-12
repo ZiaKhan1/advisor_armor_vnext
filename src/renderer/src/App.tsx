@@ -498,6 +498,16 @@ function DescriptionStep({
         >
           {step.linkText}
         </a>
+      ) : step.linkText && step.action === 'openFirewallSettings' ? (
+        <button
+          className="font-medium text-sky-700 underline underline-offset-2"
+          type="button"
+          onClick={() => {
+            void window.deviceWatch.openFirewallSettings()
+          }}
+        >
+          {step.linkText}
+        </button>
       ) : null}
       {step.suffix}
     </li>

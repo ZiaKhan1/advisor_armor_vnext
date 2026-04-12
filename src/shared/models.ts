@@ -124,6 +124,7 @@ export interface ScanElementDescriptionStep {
   text: string
   linkText?: string
   linkUrl?: string
+  action?: 'openFirewallSettings'
   suffix?: string
 }
 

@@ -22,7 +22,9 @@ const api: DeviceWatchApi = {
   retryCurrentAction: () => ipcRenderer.invoke(ipcChannels.retryCurrentAction),
   logout: () => ipcRenderer.invoke(ipcChannels.logout),
   openSupportEmail: () => ipcRenderer.invoke(ipcChannels.openSupportEmail),
-  openTroubleshooting: () => ipcRenderer.invoke(ipcChannels.openTroubleshooting)
+  openTroubleshooting: () => ipcRenderer.invoke(ipcChannels.openTroubleshooting),
+  openFirewallSettings: () =>
+    ipcRenderer.invoke(ipcChannels.openFirewallSettings)
 }
 
 contextBridge.exposeInMainWorld('deviceWatch', api)

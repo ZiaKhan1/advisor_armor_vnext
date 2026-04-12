@@ -1,4 +1,5 @@
 import { BrowserWindow, shell } from 'electron'
+import { spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { config } from '../../src/config'
 import type {
@@ -224,6 +225,29 @@ export class AppController extends EventEmitter {
 
   async openTroubleshooting(): Promise<void> {
     await shell.openExternal(config.troubleshootingUrl)
+  }
+
+  async openFirewallSettings(): Promise<void> {
+    if (process.platform === 'win32') {
+      const child = spawn('cmd.exe', ['/c', 'start', '', 'wf.msc'], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true
+      })
+      child.unref()
+      return
+    }
+
+    if (process.platform === 'darwin') {
+      await shell.openExternal(
+        'x-apple.systempreferences:com.apple.Network-Settings.extension'
+      )
+      return
+    }
+
+    logger.warn('Opening firewall settings is not supported on this platform', {
+      platform: process.platform
+    })
   }
 
   async checkForUpdates(): Promise<void> {

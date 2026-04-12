@@ -140,7 +140,8 @@ function installDeviceWatch(state: RendererState): DeviceWatchApi {
     retryCurrentAction: async () => undefined,
     logout: async () => undefined,
     openSupportEmail: async () => undefined,
-    openTroubleshooting: async () => undefined
+    openTroubleshooting: async () => undefined,
+    openFirewallSettings: async () => undefined
   }
   window.deviceWatch = api
   return api

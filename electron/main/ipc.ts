@@ -25,4 +25,7 @@ export function registerIpc(controller: AppController): void {
   ipcMain.handle(ipcChannels.openTroubleshooting, () =>
     controller.openTroubleshooting()
   )
+  ipcMain.handle(ipcChannels.openFirewallSettings, () =>
+    controller.openFirewallSettings()
+  )
 }

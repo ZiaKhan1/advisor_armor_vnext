@@ -18,6 +18,7 @@ export interface DeviceWatchApi {
   logout: () => Promise<void>
   openSupportEmail: () => Promise<void>
   openTroubleshooting: () => Promise<void>
+  openFirewallSettings: () => Promise<void>
 }
 
 export const ipcChannels = {
@@ -29,5 +30,6 @@ export const ipcChannels = {
   logout: 'auth:logout',
   openSupportEmail: 'help:open-support-email',
   openTroubleshooting: 'help:open-troubleshooting',
+  openFirewallSettings: 'system:open-firewall-settings',
   stateChanged: 'app:state-changed'
 } as const

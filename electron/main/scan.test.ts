@@ -138,7 +138,7 @@ describe('evaluateDevice firewall result', () => {
         {
           text: 'Open ',
           linkText: 'Windows Defender Firewall',
-          linkUrl: 'ps://wf.msc'
+          action: 'openFirewallSettings'
         },
         {
           text: 'Click Windows Defender Firewall Properties.'
