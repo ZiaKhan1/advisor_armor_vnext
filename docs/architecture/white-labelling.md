@@ -45,7 +45,7 @@ export const config = {
   policyTimeoutMs: 30_000,
   sendScanResultTimeoutMs: 20_000,
   sendScanResultRetryMaxAttempts: 3,
-  sendScanResultRetryDelayMs: 5_000,
+  sendScanResultRetryDelayMs: 5_000
 }
 ```
 
@@ -149,17 +149,17 @@ assets/logo.png
 
 ## What Is Configurable
 
-| Setting | Location |
-|---|---|
-| Backend endpoint URLs | `src/config.ts` |
-| Mock backend mode | `src/config.ts` (toggled via `VITE_MOCK_MODE`) |
-| Mock OTP code | `src/config.ts` |
-| Backend client timeouts | `src/config.ts` |
-| Result submission retry settings | `src/config.ts` |
-| App display name (UI) | `src/config.ts` |
-| Support email | `src/config.ts` |
-| Troubleshooting URL | `src/config.ts` |
-| In-app logo | `assets/logo.png` |
-| OS app name / installer name | `package.json` → `build.productName` |
-| App ID | `package.json` → `build.appId` |
-| App icon (dock/taskbar) | `assets/icon/` |
+| Setting                          | Location                                       |
+| -------------------------------- | ---------------------------------------------- |
+| Backend endpoint URLs            | `src/config.ts`                                |
+| Mock backend mode                | `src/config.ts` (toggled via `VITE_MOCK_MODE`) |
+| Mock OTP code                    | `src/config.ts`                                |
+| Backend client timeouts          | `src/config.ts`                                |
+| Result submission retry settings | `src/config.ts`                                |
+| App display name (UI)            | `src/config.ts`                                |
+| Support email                    | `src/config.ts`                                |
+| Troubleshooting URL              | `src/config.ts`                                |
+| In-app logo                      | `assets/logo.png`                              |
+| OS app name / installer name     | `package.json` → `build.productName`           |
+| App ID                           | `package.json` → `build.appId`                 |
+| App icon (dock/taskbar)          | `assets/icon/`                                 |

@@ -4,10 +4,12 @@ This file is auto-loaded by Claude Code at the start of every session.
 Use it as the entry point to all project context.
 
 ## Project
+
 DeviceWatch — an Electron desktop compliance monitoring application (Mac + Windows).
 See `docs/planning/PLAN.md` for current status and active goals.
 
 ## Docs Structure
+
 ```
 docs/
 ├── architecture/    # Permanent — decisions that outlive the project
@@ -19,6 +21,7 @@ docs/
 ```
 
 ## Key Files for AI Context
+
 - Current plan & status → `docs/planning/PLAN.md`
 - Resolved planning decisions → `docs/planning/DECISIONS.md`
 - System design & data flow → `docs/architecture/ARCHITECTURE.md`
@@ -36,5 +39,6 @@ docs/
 - Other feature specs → `docs/features/`
 
 ## Session Notes
+
 - Read `docs/planning/PLAN.md` first when resuming work
 - Check relevant `docs/features/` file when working on a specific area

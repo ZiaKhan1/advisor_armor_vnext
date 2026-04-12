@@ -8,19 +8,23 @@ deprecated: ~
 # Project Plan
 
 ## Purpose
+
 DeviceWatch is a desktop compliance monitoring application that runs on employee machines (Mac and Windows). It scans the device against an organisation's security policy on demand and monitors for changes (e.g. connecting to an unsecure WiFi network), alerting the user when issues are detected. Results are reported to both the user and a backend API. It helps organisations ensure employee devices meet their security standards without requiring IT to manually audit machines.
 
 ## Target Users
+
 - **End users** — employees who run the app on their machines and see their scan results
 - **IT admins** — view aggregated compliance reports via the backend (out of scope for this app; handled server-side)
 
 ## Goals
+
 - Automatically run scheduled compliance scans on employee devices
 - Surface scan results clearly to the user (PASS / FAIL / NUDGE)
 - Report scan results to backend for admin visibility
 - Minimal friction — auto-start, runs in background, no repeated logins
 
 ## Out of Scope
+
 - Remediation — app reads device settings only, never modifies them
 - Admin dashboard — handled by backend/separate product
 - Policy management — policy is owned by backend API
@@ -28,18 +32,22 @@ DeviceWatch is a desktop compliance monitoring application that runs on employee
 ## Feature Scope (v1)
 
 ### Onboarding
+
 - First launch: prompt user for email
 - Send OTP to email, prompt user to verify
 - Store verified email in local settings file
 - Subsequent launches: use stored email silently
 
 ### Policy
+
 - Fetch user policy from backend API using stored email
 - Policy is org-level, returned as JSON per user email
 - Policy defines per-scan-element behaviour: PASS / FAIL / NUDGE
 
 ### Device Scan
+
 Scan elements in v1 are defined in `docs/architecture/scan-logic.md`. The initial list below was captured early in planning and is now superseded by the full v1 set:
+
 - Firewall
 - Disk Encryption
 - Automatic Updates
@@ -63,16 +71,19 @@ Scan elements in v1 are defined in `docs/architecture/scan-logic.md`. The initia
 | NOT OK | PASS | PASS (green ✓) |
 
 ### Auto-Start
+
 - App auto-starts on system login/startup (always on, not user-configurable)
 - On start, app immediately shows its window, checks for updates, then begins the scan flow
 - Implementation: LaunchAgent plist (Mac), startup registry or Task Scheduler (Windows)
 
 ### Scheduling
+
 - Scan runs on system start
 - Scan runs every 24 hours (interval driven by `ScanIntervalHours` in policy, default 24)
 - App lives in system tray (Windows) / menu bar (Mac) between scans
 
 ### Auto-Updates
+
 - Updates hosted on GitHub releases
 - App prompts user when a new version is available
 - User confirms → update downloaded and installed
@@ -81,10 +92,12 @@ Scan elements in v1 are defined in `docs/architecture/scan-logic.md`. The initia
 - Code signing will be implemented for both Mac and Windows (required for Mac auto-updates)
 
 ### Results UI
+
 - Full window UI showing per-element scan results with colour-coded status
 - Accessible via tray/menu bar icon click
 
 ### Reporting
+
 - After each scan, results are sent to backend API
 - Submission status shown inline to user:
   - Attempt 1: "Submitting results..."
@@ -95,6 +108,7 @@ Scan elements in v1 are defined in `docs/architecture/scan-logic.md`. The initia
 - Scan results are always shown to user regardless of submission outcome
 
 ### Offline Behaviour
+
 - Each scan fetches the latest policy before evaluation
 - If no internet connection when scan is triggered, show a clear error in the main window and block the scan
 - Scan results are not shown when offline (no policy available to evaluate against)
@@ -102,7 +116,9 @@ Scan elements in v1 are defined in `docs/architecture/scan-logic.md`. The initia
 - **Future improvement:** give user option to run scan anyway (view device status without policy evaluation) and submit results once back online
 
 ## Current Status
+
 - [ ] Planning phase — ready to scaffold
 
 ## Open Decisions
+
 - Windows app detection strategy for app policy checks — research spike

@@ -1,10 +1,19 @@
 import { hostname, machine, platform, release } from 'node:os'
-import type { DeviceSnapshot, NormalizedPolicy, ScanElementResult, ScanResultData, WifiConnection } from '@shared/models'
+import type {
+  DeviceSnapshot,
+  NormalizedPolicy,
+  ScanElementResult,
+  ScanResultData,
+  WifiConnection
+} from '@shared/models'
 import { FAIL, NUDGE, PASS, type PolicyStatus } from '@shared/status'
 import { config } from '../../src/config'
 
 async function resolvePublicIp(): Promise<string> {
-  for (const url of [config.networkId.primaryUrl, config.networkId.fallbackUrl]) {
+  for (const url of [
+    config.networkId.primaryUrl,
+    config.networkId.fallbackUrl
+  ]) {
     try {
       const response = await fetch(url)
       if (response.ok) {
@@ -57,19 +66,24 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
     activeWifiSecure: true,
     knownWifiSecure: true,
     networkIdInUse: publicIp,
-    installedApps: currentPlatform === 'darwin' ? ['Safari'] : ['Microsoft Defender'],
+    installedApps:
+      currentPlatform === 'darwin' ? ['Safari'] : ['Microsoft Defender'],
     wifiConnections,
     screenIdleSeconds: 300,
     screenLockSeconds: 0
   }
 }
 
-function compareVersion(current: string, ok: string, nudge: string): PolicyStatus {
+function compareVersion(
+  current: string,
+  ok: string,
+  nudge: string
+): PolicyStatus {
   const normalize = (value: string): number[] =>
     value
       .split('.')
-      .map(part => Number.parseInt(part, 10))
-      .filter(part => !Number.isNaN(part))
+      .map((part) => Number.parseInt(part, 10))
+      .filter((part) => !Number.isNaN(part))
   const compare = (left: number[], right: number[]): number => {
     const length = Math.max(left.length, right.length)
     for (let index = 0; index < length; index += 1) {
@@ -95,27 +109,43 @@ function compareVersion(current: string, ok: string, nudge: string): PolicyStatu
   return FAIL
 }
 
-function evaluateBoolean(requiredStatus: PolicyStatus, isOk: boolean | null): PolicyStatus {
+function evaluateBoolean(
+  requiredStatus: PolicyStatus,
+  isOk: boolean | null
+): PolicyStatus {
   if (isOk == null || isOk) {
     return PASS
   }
   return requiredStatus
 }
 
-function evaluateNumeric(requiredStatus: PolicyStatus, actual: number | null, maxAllowed: number | null): PolicyStatus {
+function evaluateNumeric(
+  requiredStatus: PolicyStatus,
+  actual: number | null,
+  maxAllowed: number | null
+): PolicyStatus {
   if (actual == null || maxAllowed == null || actual <= maxAllowed) {
     return PASS
   }
   return requiredStatus
 }
 
-export function evaluateDevice(device: DeviceSnapshot, policy: NormalizedPolicy): ScanResultData {
+export function evaluateDevice(
+  device: DeviceSnapshot,
+  policy: NormalizedPolicy
+): ScanResultData {
   const isMac = device.platform === 'darwin'
   const osPolicy = isMac ? policy.osVersions.mac : policy.osVersions.win
   const osStatus = compareVersion(device.osVersion, osPolicy.ok, osPolicy.nudge)
   const firewall = evaluateBoolean(policy.firewall, device.firewallEnabled)
-  const diskEncryption = evaluateBoolean(policy.diskEncryption, device.diskEncryptionEnabled)
-  const automaticUpdates = evaluateBoolean(policy.automaticUpdates, device.automaticUpdatesEnabled)
+  const diskEncryption = evaluateBoolean(
+    policy.diskEncryption,
+    device.diskEncryptionEnabled
+  )
+  const automaticUpdates = evaluateBoolean(
+    policy.automaticUpdates,
+    device.automaticUpdatesEnabled
+  )
   const remoteLogin = evaluateBoolean(
     isMac ? policy.remoteLogin.mac : policy.remoteLogin.win,
     device.remoteLoginEnabled === false
@@ -124,33 +154,54 @@ export function evaluateDevice(device: DeviceSnapshot, policy: NormalizedPolicy)
     device.platform === 'win32'
       ? evaluateBoolean(policy.winDefenderAV, device.winDefenderEnabled)
       : PASS
-  const screenIdle = evaluateNumeric(PASS, device.screenIdleSeconds, isMac ? policy.screenIdle.mac : policy.screenIdle.win)
-  const screenLock = evaluateNumeric(PASS, device.screenLockSeconds, isMac ? policy.screenLock.mac : policy.screenLock.win)
-  const activeWifiNetwork = evaluateBoolean(policy.activeWifiNetwork, device.activeWifiSecure)
-  const knownWifiNetworks = evaluateBoolean(policy.knownWifiNetworks, device.knownWifiSecure)
+  const screenIdle = evaluateNumeric(
+    PASS,
+    device.screenIdleSeconds,
+    isMac ? policy.screenIdle.mac : policy.screenIdle.win
+  )
+  const screenLock = evaluateNumeric(
+    PASS,
+    device.screenLockSeconds,
+    isMac ? policy.screenLock.mac : policy.screenLock.win
+  )
+  const activeWifiNetwork = evaluateBoolean(
+    policy.activeWifiNetwork,
+    device.activeWifiSecure
+  )
+  const knownWifiNetworks = evaluateBoolean(
+    policy.knownWifiNetworks,
+    device.knownWifiSecure
+  )
   const networkID =
     policy.networkIdIps
       .split(',')
-      .map(ip => ip.trim())
+      .map((ip) => ip.trim())
       .filter(Boolean)
       .includes(device.networkIdInUse) || policy.networkId === PASS
       ? PASS
       : policy.networkId
 
-  const installedProhibitedApps = device.installedApps.filter(app =>
-    policy.appsPolicy.prohibitedApps.some(prohibited => prohibited.toLowerCase() === app.toLowerCase())
+  const installedProhibitedApps = device.installedApps.filter((app) =>
+    policy.appsPolicy.prohibitedApps.some(
+      (prohibited) => prohibited.toLowerCase() === app.toLowerCase()
+    )
   )
   const missingRequiredAppsCategories = policy.appsPolicy.requiredAppsCategories
-    .filter(category => {
-      const installed = category.apps.filter(appName =>
-        device.installedApps.some(installedApp => installedApp.toLowerCase() === appName.toLowerCase())
+    .filter((category) => {
+      const installed = category.apps.filter((appName) =>
+        device.installedApps.some(
+          (installedApp) => installedApp.toLowerCase() === appName.toLowerCase()
+        )
       )
       return installed.length < category.requiredAppsCount
     })
-    .map(category => category.apps.join(', '))
+    .map((category) => category.apps.join(', '))
 
   const applications =
-    installedProhibitedApps.length === 0 && missingRequiredAppsCategories.length === 0 ? PASS : FAIL
+    installedProhibitedApps.length === 0 &&
+    missingRequiredAppsCategories.length === 0
+      ? PASS
+      : FAIL
 
   const statuses: PolicyStatus[] = [
     osStatus,
@@ -167,20 +218,104 @@ export function evaluateDevice(device: DeviceSnapshot, policy: NormalizedPolicy)
     winDefenderAV
   ]
 
-  const overall = statuses.includes(FAIL) ? FAIL : statuses.includes(NUDGE) ? NUDGE : PASS
+  const overall = statuses.includes(FAIL)
+    ? FAIL
+    : statuses.includes(NUDGE)
+      ? NUDGE
+      : PASS
 
   const elements: ScanElementResult[] = [
-    buildElement('osVersion', 'System Updates', osStatus, `Current OS version ${device.osVersion}`, 'Update the operating system to the approved version level.'),
-    buildElement('firewall', 'Firewall', firewall, device.firewallEnabled ? 'Firewall appears enabled.' : 'Firewall appears disabled.', 'Enable the system firewall in device settings.'),
-    buildElement('diskEncryption', 'Disk Encryption', diskEncryption, device.diskEncryptionEnabled ? 'Disk encryption appears enabled.' : 'Disk encryption appears disabled.', 'Enable FileVault or BitLocker.'),
-    buildElement('screenIdle', 'Screen Idle', screenIdle, `Idle timeout: ${device.screenIdleSeconds ?? 'Unknown'} seconds`, 'Reduce the idle timeout in device settings.'),
-    buildElement('screenLock', 'Screen Lock', screenLock, `Lock timeout: ${device.screenLockSeconds ?? 'Unknown'} seconds`, 'Require screen lock immediately or within policy.'),
-    buildElement('automaticUpdates', 'Automatic Updates', automaticUpdates, device.automaticUpdatesEnabled ? 'Automatic updates appear enabled.' : 'Automatic updates appear disabled.', 'Turn on automatic operating system updates.'),
-    buildElement('remoteLogin', 'Remote Login', remoteLogin, device.remoteLoginEnabled ? 'Remote login appears enabled.' : 'Remote login appears disabled.', 'Disable remote login unless explicitly required.'),
-    buildElement('activeWifiNetwork', 'Active Wi-Fi Network', activeWifiNetwork, device.activeWifiSecure ? 'Current Wi-Fi appears secure.' : 'Current Wi-Fi appears insecure.', 'Connect only to secure Wi-Fi networks.'),
-    buildElement('knownWifiNetworks', 'Known Wi-Fi Networks', knownWifiNetworks, device.knownWifiSecure ? 'Known Wi-Fi profiles appear secure.' : 'Known Wi-Fi profiles may include insecure networks.', 'Remove insecure saved Wi-Fi networks.'),
-    buildElement('networkId', 'Network ID', networkID, device.networkIdInUse ? `Public IP: ${device.networkIdInUse}` : 'Public IP unavailable.', 'Connect from an approved network.'),
-    buildElement('applications', 'Applications', applications, describeAppState(installedProhibitedApps, missingRequiredAppsCategories), 'Remove prohibited applications and install required security tools.')
+    buildElement(
+      'osVersion',
+      'System Updates',
+      osStatus,
+      `Current OS version ${device.osVersion}`,
+      'Update the operating system to the approved version level.'
+    ),
+    buildElement(
+      'firewall',
+      'Firewall',
+      firewall,
+      device.firewallEnabled
+        ? 'Firewall appears enabled.'
+        : 'Firewall appears disabled.',
+      'Enable the system firewall in device settings.'
+    ),
+    buildElement(
+      'diskEncryption',
+      'Disk Encryption',
+      diskEncryption,
+      device.diskEncryptionEnabled
+        ? 'Disk encryption appears enabled.'
+        : 'Disk encryption appears disabled.',
+      'Enable FileVault or BitLocker.'
+    ),
+    buildElement(
+      'screenIdle',
+      'Screen Idle',
+      screenIdle,
+      `Idle timeout: ${device.screenIdleSeconds ?? 'Unknown'} seconds`,
+      'Reduce the idle timeout in device settings.'
+    ),
+    buildElement(
+      'screenLock',
+      'Screen Lock',
+      screenLock,
+      `Lock timeout: ${device.screenLockSeconds ?? 'Unknown'} seconds`,
+      'Require screen lock immediately or within policy.'
+    ),
+    buildElement(
+      'automaticUpdates',
+      'Automatic Updates',
+      automaticUpdates,
+      device.automaticUpdatesEnabled
+        ? 'Automatic updates appear enabled.'
+        : 'Automatic updates appear disabled.',
+      'Turn on automatic operating system updates.'
+    ),
+    buildElement(
+      'remoteLogin',
+      'Remote Login',
+      remoteLogin,
+      device.remoteLoginEnabled
+        ? 'Remote login appears enabled.'
+        : 'Remote login appears disabled.',
+      'Disable remote login unless explicitly required.'
+    ),
+    buildElement(
+      'activeWifiNetwork',
+      'Active Wi-Fi Network',
+      activeWifiNetwork,
+      device.activeWifiSecure
+        ? 'Current Wi-Fi appears secure.'
+        : 'Current Wi-Fi appears insecure.',
+      'Connect only to secure Wi-Fi networks.'
+    ),
+    buildElement(
+      'knownWifiNetworks',
+      'Known Wi-Fi Networks',
+      knownWifiNetworks,
+      device.knownWifiSecure
+        ? 'Known Wi-Fi profiles appear secure.'
+        : 'Known Wi-Fi profiles may include insecure networks.',
+      'Remove insecure saved Wi-Fi networks.'
+    ),
+    buildElement(
+      'networkId',
+      'Network ID',
+      networkID,
+      device.networkIdInUse
+        ? `Public IP: ${device.networkIdInUse}`
+        : 'Public IP unavailable.',
+      'Connect from an approved network.'
+    ),
+    buildElement(
+      'applications',
+      'Applications',
+      applications,
+      describeAppState(installedProhibitedApps, missingRequiredAppsCategories),
+      'Remove prohibited applications and install required security tools.'
+    )
   ]
 
   return {
@@ -224,7 +359,10 @@ function buildElement(
   }
 }
 
-function describeAppState(prohibitedApps: string[], missingCategories: string[]): string {
+function describeAppState(
+  prohibitedApps: string[],
+  missingCategories: string[]
+): string {
   if (prohibitedApps.length === 0 && missingCategories.length === 0) {
     return 'Required application checks passed.'
   }
@@ -233,7 +371,9 @@ function describeAppState(prohibitedApps: string[], missingCategories: string[])
     parts.push(`Installed prohibited apps: ${prohibitedApps.join(', ')}`)
   }
   if (missingCategories.length > 0) {
-    parts.push(`Missing required app categories: ${missingCategories.join(' | ')}`)
+    parts.push(
+      `Missing required app categories: ${missingCategories.join(' | ')}`
+    )
   }
   return parts.join('. ')
 }

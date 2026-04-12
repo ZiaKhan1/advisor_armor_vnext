@@ -5,7 +5,9 @@ import type { RendererState, ScanElementResult } from '@shared/models'
 import { FAIL, NUDGE, PASS } from '@shared/status'
 import { App } from './App'
 
-function createScanElement(overrides: Partial<ScanElementResult> = {}): ScanElementResult {
+function createScanElement(
+  overrides: Partial<ScanElementResult> = {}
+): ScanElementResult {
   return {
     key: 'firewall',
     title: 'Firewall',
@@ -17,7 +19,9 @@ function createScanElement(overrides: Partial<ScanElementResult> = {}): ScanElem
   }
 }
 
-function createRendererState(overrides: Partial<RendererState> = {}): RendererState {
+function createRendererState(
+  overrides: Partial<RendererState> = {}
+): RendererState {
   return {
     screen: 'email',
     busy: false,
@@ -52,7 +56,9 @@ function createRendererState(overrides: Partial<RendererState> = {}): RendererSt
   }
 }
 
-function createResultsState(overrides: Partial<RendererState> = {}): RendererState {
+function createResultsState(
+  overrides: Partial<RendererState> = {}
+): RendererState {
   return createRendererState({
     screen: 'results',
     user: {
@@ -95,7 +101,8 @@ function createResultsState(overrides: Partial<RendererState> = {}): RendererSta
             title: 'Firewall',
             status: FAIL,
             detail: 'Firewall is disabled.',
-            description: 'Firewall protects this device from unwanted inbound traffic.',
+            description:
+              'Firewall protects this device from unwanted inbound traffic.',
             fixInstruction: 'Enable the firewall in system settings.'
           }),
           createScanElement({
@@ -103,7 +110,8 @@ function createResultsState(overrides: Partial<RendererState> = {}): RendererSta
             title: 'Applications',
             status: NUDGE,
             detail: 'One required app category is missing.',
-            description: 'Required security applications help protect the device.',
+            description:
+              'Required security applications help protect the device.',
             fixInstruction: 'Install an approved password manager.'
           })
         ]
@@ -145,7 +153,9 @@ it('renders company header compactly and expands details on click', async () => 
 
   render(<App />)
 
-  const companyHeader = await screen.findByRole('button', { name: /example advice/i })
+  const companyHeader = await screen.findByRole('button', {
+    name: /example advice/i
+  })
   expect(screen.getByText('admin@example.com')).toBeInTheDocument()
   expect(screen.queryByText('Manufacturer')).not.toBeInTheDocument()
 
@@ -163,7 +173,9 @@ it('shows needs attention as an inline status summary', async () => {
 
   expect(await screen.findByText('Needs attention')).toBeInTheDocument()
   expect(
-    screen.getByText('Review the policy items below for details and next steps.')
+    screen.getByText(
+      'Review the policy items below for details and next steps.'
+    )
   ).toBeInTheDocument()
 })
 
@@ -179,7 +191,9 @@ it('expands and collapses scan row details', async () => {
   await user.click(firewallRow)
 
   expect(screen.getByText('Recommended action')).toBeInTheDocument()
-  expect(screen.getByText('Enable the firewall in system settings.')).toBeInTheDocument()
+  expect(
+    screen.getByText('Enable the firewall in system settings.')
+  ).toBeInTheDocument()
 
   await user.click(firewallRow)
 
@@ -191,6 +205,8 @@ it('keeps footer actions available', async () => {
 
   render(<App />)
 
-  expect(await screen.findByRole('button', { name: 'RESCAN' })).toBeInTheDocument()
+  expect(
+    await screen.findByRole('button', { name: 'RESCAN' })
+  ).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'LOG OUT' })).toBeInTheDocument()
 })

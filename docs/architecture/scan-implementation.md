@@ -16,6 +16,7 @@ All scan checks run in the **main process**. Each check is a TypeScript function
 Use a small typed command runner in the main process. Prefer `execFile` as the default. Fall back to `spawn` only when a check truly needs streamed or stdin-driven execution.
 
 ### `execFile` — default path
+
 From Node.js `child_process`. Best for short commands with explicit executable + argument lists, timeouts, and predictable output.
 
 ```ts
@@ -30,6 +31,7 @@ const { stdout } = await execFileAsync('bash', ['-lc', 'fdesetup status'], {
 ```
 
 ### `spawn` — exception path
+
 Use only when a check genuinely needs streamed output or stdin-driven scripting.
 
 ```ts
@@ -37,10 +39,15 @@ import { spawn } from 'child_process'
 
 function runPowerShell(script: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const ps = spawn('powershell', ['-NoProfile', '-NonInteractive', '-Command', '-'])
+    const ps = spawn('powershell', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      '-'
+    ])
     let output = ''
-    ps.stdout.on('data', data => output += data)
-    ps.stderr.on('data', data => reject(data.toString()))
+    ps.stdout.on('data', (data) => (output += data))
+    ps.stderr.on('data', (data) => reject(data.toString()))
     ps.on('close', () => resolve(output))
     ps.stdin.write(script)
     ps.stdin.end()
@@ -51,8 +58,8 @@ function runShell(script: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const sh = spawn('bash', ['-s'])
     let output = ''
-    sh.stdout.on('data', data => output += data)
-    sh.stderr.on('data', data => reject(data.toString()))
+    sh.stdout.on('data', (data) => (output += data))
+    sh.stderr.on('data', (data) => reject(data.toString()))
     sh.on('close', () => resolve(output))
     sh.stdin.write(script)
     sh.stdin.end()
@@ -61,14 +68,15 @@ function runShell(script: string): Promise<string> {
 ```
 
 ### Which to use
+
 Default to `execFile`:
 
-| Scenario | Tool |
-|---|---|
-| Simple Mac shell command | `execFile('bash', ['-lc', ...])` |
-| Simple Windows command (`powershell.exe`, `netsh`, `reg query`) | `execFile(...)` |
-| Complex multi-line PowerShell | `spawn` → `runPowerShell` |
-| Complex multi-line bash | `spawn` → `runShell` |
+| Scenario                                                        | Tool                             |
+| --------------------------------------------------------------- | -------------------------------- |
+| Simple Mac shell command                                        | `execFile('bash', ['-lc', ...])` |
+| Simple Windows command (`powershell.exe`, `netsh`, `reg query`) | `execFile(...)`                  |
+| Complex multi-line PowerShell                                   | `spawn` → `runPowerShell`        |
+| Complex multi-line bash                                         | `spawn` → `runShell`             |
 
 ## Platform Differences
 

@@ -1,7 +1,13 @@
 import { BrowserWindow, shell } from 'electron'
 import { EventEmitter } from 'node:events'
 import { config } from '../../src/config'
-import type { LastScanMetadata, NormalizedPolicy, RendererState, ScanResultData, UserInfo } from '@shared/models'
+import type {
+  LastScanMetadata,
+  NormalizedPolicy,
+  RendererState,
+  ScanResultData,
+  UserInfo
+} from '@shared/models'
 import { createBackend, type BackendApi } from './backend'
 import { isBackendError } from './backend-errors'
 import { logger } from './logging'
@@ -16,7 +22,11 @@ export class AppController extends EventEmitter {
   private window: BrowserWindow | null = null
   private scanTimer: NodeJS.Timeout | null = null
   private currentPolicy: NormalizedPolicy | null = null
-  private pendingAccessContext: { email: string; companyName: string; isAdmin: boolean } | null = null
+  private pendingAccessContext: {
+    email: string
+    companyName: string
+    isAdmin: boolean
+  } | null = null
   private state: RendererState = {
     screen: 'loading',
     busy: true,
@@ -91,7 +101,8 @@ export class AppController extends EventEmitter {
       if (!isValid) {
         this.patchState({
           busy: false,
-          errorMessage: 'Unable to validate your email address. Please try again.'
+          errorMessage:
+            'Unable to validate your email address. Please try again.'
         })
         return
       }
@@ -248,7 +259,10 @@ export class AppController extends EventEmitter {
     const startedAt = Date.now()
     try {
       const isMacOS = process.platform === 'darwin'
-      const policyResponse = await this.backend.fetchPolicy(this.state.user.email, isMacOS)
+      const policyResponse = await this.backend.fetchPolicy(
+        this.state.user.email,
+        isMacOS
+      )
       this.currentPolicy = policyResponse.parsed
       const settings = await this.storage.writeSettings({
         scanIntervalHours: policyResponse.parsed.scanIntervalHours
@@ -281,10 +295,16 @@ export class AppController extends EventEmitter {
         }
       })
 
-      await this.submitScanResult(device, result, this.state.user.email, policyResponse.parsed)
+      await this.submitScanResult(
+        device,
+        result,
+        this.state.user.email,
+        policyResponse.parsed
+      )
     } catch (error) {
       logger.error('Start scan flow failed', error)
-      const genericMessage = 'AdvisorArmor needs an internet connection to run a scan.'
+      const genericMessage =
+        'AdvisorArmor needs an internet connection to run a scan.'
       if (isBackendError(error)) {
         logger.error('Backend failure classification', {
           type: error.type,
@@ -308,7 +328,11 @@ export class AppController extends EventEmitter {
     email: string,
     policy: NormalizedPolicy
   ): Promise<void> {
-    for (let attempt = 1; attempt <= config.submission.maxAttempts; attempt += 1) {
+    for (
+      let attempt = 1;
+      attempt <= config.submission.maxAttempts;
+      attempt += 1
+    ) {
       this.patchState({
         submission: {
           phase: 'submitting',
@@ -337,7 +361,8 @@ export class AppController extends EventEmitter {
               phase: 'failed',
               attempt,
               maxAttempts: config.submission.maxAttempts,
-              errorMessage: 'Results could not be submitted. Please check your connection.'
+              errorMessage:
+                'Results could not be submitted. Please check your connection.'
             }
           })
           return
@@ -349,9 +374,12 @@ export class AppController extends EventEmitter {
 
   private scheduleNextScan(scanIntervalHours: number): void {
     this.clearScheduledScan()
-    this.scanTimer = setTimeout(() => {
-      void this.startScanFlow('Running scheduled scan...')
-    }, scanIntervalHours * 60 * 60 * 1000)
+    this.scanTimer = setTimeout(
+      () => {
+        void this.startScanFlow('Running scheduled scan...')
+      },
+      scanIntervalHours * 60 * 60 * 1000
+    )
   }
 
   private clearScheduledScan(): void {
@@ -374,7 +402,7 @@ export class AppController extends EventEmitter {
 }
 
 function delay(ms: number): Promise<void> {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     setTimeout(resolve, ms)
   })
 }

@@ -9,7 +9,9 @@ export interface TrayHandlers {
 }
 
 export function createTray(handlers: TrayHandlers): Tray {
-  const image = nativeImage.createFromPath(join(process.cwd(), 'assets', 'tray-icon.png'))
+  const image = nativeImage.createFromPath(
+    join(process.cwd(), 'assets', 'tray-icon.png')
+  )
   const tray = new Tray(image.isEmpty() ? nativeImage.createEmpty() : image)
 
   const menu = Menu.buildFromTemplate([

@@ -15,6 +15,7 @@ All local data lives under `app.getPath('userData')`:
 ## Files
 
 ### `storage/user.json`
+
 Written at onboarding completion. Read on every launch to skip the onboarding flow.
 
 ```json
@@ -26,6 +27,7 @@ Written at onboarding completion. Read on every launch to skip the onboarding fl
 ```
 
 ### `settings.json`
+
 App behaviour config. Written by the app as needed. Keys missing from the file fall back to defaults.
 
 ```json
@@ -35,12 +37,13 @@ App behaviour config. Written by the app as needed. Keys missing from the file f
 }
 ```
 
-| Key | Default | Description |
-|---|---|---|
-| `scanIntervalHours` | `24` | Fetched from policy after each policy fetch; drives the scan scheduler |
-| `diagnosticLogLevel` | `"detailed"` | Log verbosity — `off`, `minimal`, or `detailed` |
+| Key                  | Default      | Description                                                            |
+| -------------------- | ------------ | ---------------------------------------------------------------------- |
+| `scanIntervalHours`  | `24`         | Fetched from policy after each policy fetch; drives the scan scheduler |
+| `diagnosticLogLevel` | `"detailed"` | Log verbosity — `off`, `minimal`, or `detailed`                        |
 
 ### `storage/last-scan.json`
+
 Written after a successful completed scan. Used only for lightweight last-scan metadata in v1.
 
 ```json
@@ -51,10 +54,10 @@ Written after a successful completed scan. Used only for lightweight last-scan m
 }
 ```
 
-| Key | Type | Description |
-|---|---|---|
-| `completedAt` | string | ISO timestamp for the last successful completed scan |
-| `durationMs` | number | Total scan duration in milliseconds |
+| Key             | Type   | Description                                                     |
+| --------------- | ------ | --------------------------------------------------------------- |
+| `completedAt`   | string | ISO timestamp for the last successful completed scan            |
+| `durationMs`    | number | Total scan duration in milliseconds                             |
 | `overallStatus` | string | Overall evaluated status for the last successful completed scan |
 
 ## Behaviour Notes

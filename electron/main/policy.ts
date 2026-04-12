@@ -11,7 +11,10 @@ function convertToInt(value: unknown): number {
   return Number.NaN
 }
 
-function convertToIntOrNull(value: unknown, minAllowedValue: number): number | null {
+function convertToIntOrNull(
+  value: unknown,
+  minAllowedValue: number
+): number | null {
   const intValue = convertToInt(value)
   if (Number.isNaN(intValue)) {
     return null
@@ -20,20 +23,28 @@ function convertToIntOrNull(value: unknown, minAllowedValue: number): number | n
 }
 
 function getProhibitedApps(appPolicy: unknown): string[] {
-  const apps = (appPolicy as { prohibitedApps?: Array<{ AppName?: string | null }> } | undefined)
-    ?.prohibitedApps
+  const apps = (
+    appPolicy as
+      | { prohibitedApps?: Array<{ AppName?: string | null }> }
+      | undefined
+  )?.prohibitedApps
   if (!apps) {
     return []
   }
   return apps
-    .filter(app => app.AppName != null)
-    .map(app => app.AppName!.trim())
+    .filter((app) => app.AppName != null)
+    .map((app) => app.AppName!.trim())
 }
 
 function getRequiredAppsCategories(appPolicy: unknown): RequiredAppsCategory[] {
   const categories = (
     appPolicy as
-      | { requiredAppsCategories?: Array<{ apps?: Array<{ AppName?: string }>; requiredAppsCount?: string | number }> }
+      | {
+          requiredAppsCategories?: Array<{
+            apps?: Array<{ AppName?: string }>
+            requiredAppsCount?: string | number
+          }>
+        }
       | undefined
   )?.requiredAppsCategories
   if (!categories) {
@@ -41,23 +52,32 @@ function getRequiredAppsCategories(appPolicy: unknown): RequiredAppsCategory[] {
   }
   return categories
     .filter(
-      category =>
+      (category) =>
         Array.isArray(category.apps) &&
         category.apps.length > 0 &&
         Number(category.requiredAppsCount) > 0
     )
-    .map(category => ({
-      apps: category.apps!.map(app => app.AppName?.trim() ?? '').filter(Boolean),
+    .map((category) => ({
+      apps: category
+        .apps!.map((app) => app.AppName?.trim() ?? '')
+        .filter(Boolean),
       requiredAppsCount: Number(category.requiredAppsCount)
     }))
 }
 
-export function parsePolicyResponse(userPolicy: Record<string, unknown>, isMacOS: boolean): NormalizedPolicy {
-  const systemPolicy = (userPolicy.systemPolicy ?? {}) as Record<string, unknown>
+export function parsePolicyResponse(
+  userPolicy: Record<string, unknown>,
+  isMacOS: boolean
+): NormalizedPolicy {
+  const systemPolicy = (userPolicy.systemPolicy ?? {}) as Record<
+    string,
+    unknown
+  >
   const appPolicy = (
     isMacOS
       ? (userPolicy.AppPolicy as { macPolicy?: unknown } | undefined)?.macPolicy
-      : (userPolicy.AppPolicy as { windowsPolicy?: unknown } | undefined)?.windowsPolicy
+      : (userPolicy.AppPolicy as { windowsPolicy?: unknown } | undefined)
+          ?.windowsPolicy
   ) as unknown
 
   return {
@@ -90,11 +110,18 @@ export function parsePolicyResponse(userPolicy: Record<string, unknown>, isMacOS
     firewall: toPolicyStatus(String(systemPolicy.Firewall ?? PASS)),
     diskEncryption: toPolicyStatus(String(systemPolicy.DiskEncryption ?? PASS)),
     winDefenderAV: toPolicyStatus(String(systemPolicy.WinDefenderAV ?? PASS)),
-    activeWifiNetwork: toPolicyStatus(String(systemPolicy.ActiveWifiNetwork ?? PASS)),
-    knownWifiNetworks: toPolicyStatus(String(systemPolicy.KnownWifiNetworks ?? PASS)),
-    automaticUpdates: toPolicyStatus(String(systemPolicy.AutomaticUpdates ?? PASS)),
+    activeWifiNetwork: toPolicyStatus(
+      String(systemPolicy.ActiveWifiNetwork ?? PASS)
+    ),
+    knownWifiNetworks: toPolicyStatus(
+      String(systemPolicy.KnownWifiNetworks ?? PASS)
+    ),
+    automaticUpdates: toPolicyStatus(
+      String(systemPolicy.AutomaticUpdates ?? PASS)
+    ),
     scan: String(systemPolicy.ScanPage ?? '').toUpperCase() === 'YES',
-    isShowPiiScan: String(systemPolicy.IsShowPIIScan ?? '').toUpperCase() === 'YES',
+    isShowPiiScan:
+      String(systemPolicy.IsShowPIIScan ?? '').toUpperCase() === 'YES',
     scanIntervalHours: Number(systemPolicy.ScanIntervalHours ?? 24) || 24,
     networkSecurity: {
       wpa: toPolicyStatus(String(systemPolicy['NW-WPA'] ?? PASS)),

@@ -28,17 +28,31 @@ export function createMainWindow(): BrowserWindow {
     window.show()
   })
 
-  window.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
-    logger.error('Main window failed to load', { errorCode, errorDescription })
-  })
+  window.webContents.on(
+    'did-fail-load',
+    (_event, errorCode, errorDescription) => {
+      logger.error('Main window failed to load', {
+        errorCode,
+        errorDescription
+      })
+    }
+  )
 
   window.webContents.on('did-finish-load', () => {
     logger.info('Main window finished load')
   })
 
-  window.webContents.on('console-message', ({ level, message, lineNumber, sourceId }) => {
-    logger.info('Renderer console message', { level, message, lineNumber, sourceId })
-  })
+  window.webContents.on(
+    'console-message',
+    ({ level, message, lineNumber, sourceId }) => {
+      logger.info('Renderer console message', {
+        level,
+        message,
+        lineNumber,
+        sourceId
+      })
+    }
+  )
 
   window.webContents.on('render-process-gone', (_event, details) => {
     logger.error('Renderer process gone', details)

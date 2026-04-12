@@ -15,13 +15,13 @@ created: 2026-04-08
 
 ## Tooling
 
-| Area | Tooling | Notes |
-|---|---|---|
-| Unit and service tests | Vitest | Default runner for TypeScript logic |
-| Renderer UI tests | Vitest + React Testing Library | Preferred for onboarding, results UI, and error states |
-| HTTP mocking | MSW | Preferred over ad hoc `fetch` stubs for backend contract tests |
-| End-to-end tests | Playwright | Reserved for a small number of high-value Electron flows |
-| IPC boundary tests | Thin custom fakes | Keep preload/main contracts explicit and local to the codebase |
+| Area                   | Tooling                        | Notes                                                          |
+| ---------------------- | ------------------------------ | -------------------------------------------------------------- |
+| Unit and service tests | Vitest                         | Default runner for TypeScript logic                            |
+| Renderer UI tests      | Vitest + React Testing Library | Preferred for onboarding, results UI, and error states         |
+| HTTP mocking           | MSW                            | Preferred over ad hoc `fetch` stubs for backend contract tests |
+| End-to-end tests       | Playwright                     | Reserved for a small number of high-value Electron flows       |
+| IPC boundary tests     | Thin custom fakes              | Keep preload/main contracts explicit and local to the codebase |
 
 ## Recommended Test Split
 

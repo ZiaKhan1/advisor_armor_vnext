@@ -1,11 +1,6 @@
 import type { OverallStatus, PolicyStatus } from './status'
 
-export type Screen =
-  | 'email'
-  | 'code'
-  | 'loading'
-  | 'results'
-  | 'blocking-error'
+export type Screen = 'email' | 'code' | 'loading' | 'results' | 'blocking-error'
 
 export type SubmissionPhase = 'idle' | 'submitting' | 'failed' | 'succeeded'
 

@@ -20,7 +20,7 @@ export class UpdateService {
           defaultId: 0,
           cancelId: 1
         })
-        .then(result => {
+        .then((result) => {
           if (result.response === 0) {
             void autoUpdater.downloadUpdate()
           }
@@ -40,7 +40,7 @@ export class UpdateService {
         })
     })
 
-    autoUpdater.on('error', error => {
+    autoUpdater.on('error', (error) => {
       logger.error('Auto update error', error)
     })
   }

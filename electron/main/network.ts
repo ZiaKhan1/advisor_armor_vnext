@@ -2,7 +2,7 @@ import { config } from '../../src/config'
 import { logger } from './logging'
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     setTimeout(resolve, ms)
   })
 }
@@ -17,7 +17,11 @@ export async function checkInternetConnection(): Promise<boolean> {
 }
 
 export async function waitForInternet(): Promise<boolean> {
-  for (let attempt = 1; attempt <= config.connectivity.maxAttempts; attempt += 1) {
+  for (
+    let attempt = 1;
+    attempt <= config.connectivity.maxAttempts;
+    attempt += 1
+  ) {
     logger.info(`Checking internet connection attempt ${attempt}`)
     if (await checkInternetConnection()) {
       return true

@@ -1,4 +1,9 @@
-export type BackendErrorType = 'http' | 'timeout' | 'network' | 'application' | 'unknown'
+export type BackendErrorType =
+  | 'http'
+  | 'timeout'
+  | 'network'
+  | 'application'
+  | 'unknown'
 
 export class BackendError extends Error {
   type: BackendErrorType

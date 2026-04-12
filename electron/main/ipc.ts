@@ -1,5 +1,9 @@
 import { ipcMain } from 'electron'
-import { ipcChannels, type SubmitCodeInput, type SubmitEmailInput } from '@shared/ipc'
+import {
+  ipcChannels,
+  type SubmitCodeInput,
+  type SubmitEmailInput
+} from '@shared/ipc'
 import { AppController } from './app-controller'
 
 export function registerIpc(controller: AppController): void {
@@ -11,8 +15,14 @@ export function registerIpc(controller: AppController): void {
     controller.submitCode(input.code)
   )
   ipcMain.handle(ipcChannels.rescan, () => controller.rescan())
-  ipcMain.handle(ipcChannels.retryCurrentAction, () => controller.retryCurrentAction())
+  ipcMain.handle(ipcChannels.retryCurrentAction, () =>
+    controller.retryCurrentAction()
+  )
   ipcMain.handle(ipcChannels.logout, () => controller.logout())
-  ipcMain.handle(ipcChannels.openSupportEmail, () => controller.openSupportEmail())
-  ipcMain.handle(ipcChannels.openTroubleshooting, () => controller.openTroubleshooting())
+  ipcMain.handle(ipcChannels.openSupportEmail, () =>
+    controller.openSupportEmail()
+  )
+  ipcMain.handle(ipcChannels.openTroubleshooting, () =>
+    controller.openTroubleshooting()
+  )
 }

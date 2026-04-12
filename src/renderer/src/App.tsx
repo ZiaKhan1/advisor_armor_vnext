@@ -46,7 +46,7 @@ export function App(): JSX.Element {
 
   useEffect(() => {
     if (!window.deviceWatch) {
-      setState(current => ({
+      setState((current) => ({
         ...current,
         screen: 'blocking-error',
         busy: false,
@@ -58,22 +58,25 @@ export function App(): JSX.Element {
     }
 
     let unsubscribed = false
-    void window.deviceWatch.getState().then(currentState => {
-      if (!unsubscribed) {
-        setState(currentState)
-      }
-    }).catch(error => {
-      console.error('Failed to fetch initial renderer state', error)
-      setState(current => ({
-        ...current,
-        screen: 'blocking-error',
-        busy: false,
-        title: 'Initial state failed',
-        message: 'The application state could not be loaded.',
-        errorMessage: 'The application state could not be loaded.'
-      }))
-    })
-    const unsubscribe = window.deviceWatch.subscribeState(nextState => {
+    void window.deviceWatch
+      .getState()
+      .then((currentState) => {
+        if (!unsubscribed) {
+          setState(currentState)
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to fetch initial renderer state', error)
+        setState((current) => ({
+          ...current,
+          screen: 'blocking-error',
+          busy: false,
+          title: 'Initial state failed',
+          message: 'The application state could not be loaded.',
+          errorMessage: 'The application state could not be loaded.'
+        }))
+      })
+    const unsubscribe = window.deviceWatch.subscribeState((nextState) => {
       setState(nextState)
     })
     return () => {
@@ -99,13 +102,15 @@ export function App(): JSX.Element {
             <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-white/10 text-2xl font-semibold">
               AA
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight">AdvisorArmor</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              AdvisorArmor
+            </h1>
           </div>
 
           {state.screen === 'email' ? (
             <form
               className="space-y-4"
-              onSubmit={event => {
+              onSubmit={(event) => {
                 event.preventDefault()
                 void window.deviceWatch.submitEmail({ email })
               }}
@@ -119,7 +124,7 @@ export function App(): JSX.Element {
                 type="email"
                 placeholder="name@company.com"
                 value={email}
-                onChange={event => setEmail(event.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
               />
               <button
                 className="w-full rounded-2xl bg-white px-4 py-3 font-semibold text-brand-900 disabled:opacity-60"
@@ -132,7 +137,7 @@ export function App(): JSX.Element {
           ) : (
             <form
               className="space-y-4"
-              onSubmit={event => {
+              onSubmit={(event) => {
                 event.preventDefault()
                 void window.deviceWatch.submitCode({ code })
               }}
@@ -147,7 +152,7 @@ export function App(): JSX.Element {
                 maxLength={4}
                 placeholder="1234"
                 value={code}
-                onChange={event =>
+                onChange={(event) =>
                   setCode(event.target.value.replace(/\D+/g, '').slice(0, 4))
                 }
               />
@@ -174,7 +179,9 @@ export function App(): JSX.Element {
       <main className="flex min-h-screen items-center justify-center bg-slate-50">
         <div className="text-center">
           <div className="mx-auto mb-6 h-14 w-14 animate-spin rounded-full border-4 border-slate-200 border-t-brand-500" />
-          <h1 className="text-2xl font-semibold text-slate-900">{state.title}</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            {state.title}
+          </h1>
           <p className="mt-2 text-slate-500">{state.message}</p>
         </div>
       </main>
@@ -185,7 +192,9 @@ export function App(): JSX.Element {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-50 px-6">
         <div className="w-full max-w-lg rounded-3xl bg-white p-10 shadow-panel">
-          <h1 className="text-2xl font-semibold text-slate-900">{state.title}</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            {state.title}
+          </h1>
           <p className="mt-3 text-slate-600">{state.message}</p>
           <div className="mt-8">
             <button
@@ -208,11 +217,13 @@ export function App(): JSX.Element {
     <main className="min-h-screen bg-slate-100 text-slate-900">
       <div className="sticky top-0 z-20 bg-brand-500 px-6 py-3 text-white shadow-sm">
         <div className="mx-auto flex max-w-6xl gap-6">
-          {(['scan', 'training', 'report', 'news'] as const).map(item => (
+          {(['scan', 'training', 'report', 'news'] as const).map((item) => (
             <button
               key={item}
               className={`border-b-2 pb-1.5 text-sm font-semibold uppercase tracking-[0.2em] ${
-                item === tab ? 'border-white' : 'border-transparent text-white/70'
+                item === tab
+                  ? 'border-white'
+                  : 'border-transparent text-white/70'
               }`}
               type="button"
               onClick={() => setTab(item)}
@@ -235,28 +246,43 @@ export function App(): JSX.Element {
               <button
                 className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
                 type="button"
-                onClick={() => setCompanyDetailsExpanded(current => !current)}
+                onClick={() => setCompanyDetailsExpanded((current) => !current)}
               >
                 <div className="min-w-0 flex-1">
                   <h1 className="truncate text-xl font-semibold">
-                    {state.currentScan.companyName ?? state.user?.companyName ?? 'AdvisorArmor'}
+                    {state.currentScan.companyName ??
+                      state.user?.companyName ??
+                      'AdvisorArmor'}
                   </h1>
-                  <p className="truncate text-sm text-slate-500">{state.user?.email}</p>
+                  <p className="truncate text-sm text-slate-500">
+                    {state.user?.email}
+                  </p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-600">
-                    {state.currentScan.result?.status ?? state.lastScan?.overallStatus ?? 'PASS'}
+                    {state.currentScan.result?.status ??
+                      state.lastScan?.overallStatus ??
+                      'PASS'}
                   </div>
                   <ExpandChevron expanded={companyDetailsExpanded} />
                 </div>
               </button>
               {companyDetailsExpanded ? (
                 <div className="grid gap-4 border-t border-slate-100 px-6 py-5 md:grid-cols-3">
-                  <InfoItem label="Manufacturer" value={navigator.platform.includes('Mac') ? 'Apple' : 'Microsoft'} />
+                  <InfoItem
+                    label="Manufacturer"
+                    value={
+                      navigator.platform.includes('Mac') ? 'Apple' : 'Microsoft'
+                    }
+                  />
                   <InfoItem label="Platform" value={navigator.platform} />
                   <InfoItem
                     label="Last scanned"
-                    value={state.lastScan ? formatTimestamp(state.lastScan.completedAt) : 'Not yet'}
+                    value={
+                      state.lastScan
+                        ? formatTimestamp(state.lastScan.completedAt)
+                        : 'Not yet'
+                    }
                   />
                 </div>
               ) : null}
@@ -278,17 +304,21 @@ export function App(): JSX.Element {
               <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h3 className="text-lg font-semibold">
-                    {state.currentScan.companyName ?? state.user?.companyName ?? 'Company'} Cybersecurity Policy
+                    {state.currentScan.companyName ??
+                      state.user?.companyName ??
+                      'Company'}{' '}
+                    Cybersecurity Policy
                   </h3>
-                  <p className={`mt-1 text-sm ${statusSummaryClass(result?.status)}`}>
+                  <p
+                    className={`mt-1 text-sm ${statusSummaryClass(result?.status)}`}
+                  >
                     <span className="font-medium">
                       {result?.status === FAIL
                         ? 'Needs attention'
                         : result?.status === NUDGE
                           ? 'Has recommendations'
                           : 'Properly configured'}
-                    </span>
-                    {' '}
+                    </span>{' '}
                     {result
                       ? 'Review the policy items below for details and next steps.'
                       : 'A scan result will appear here after the first successful run.'}
@@ -296,18 +326,21 @@ export function App(): JSX.Element {
                 </div>
                 {state.currentScan.durationMs ? (
                   <span className="text-sm text-slate-500">
-                    Scan duration {(state.currentScan.durationMs / 1000).toFixed(2)} seconds
+                    Scan duration{' '}
+                    {(state.currentScan.durationMs / 1000).toFixed(2)} seconds
                   </span>
                 ) : null}
               </div>
               <div className="space-y-3">
-                {result?.elements.map(item => (
+                {result?.elements.map((item) => (
                   <ScanRow
                     key={item.key}
                     item={item}
                     expanded={expanded === item.key}
                     onToggle={() =>
-                      setExpanded(current => (current === item.key ? null : item.key))
+                      setExpanded((current) =>
+                        current === item.key ? null : item.key
+                      )
                     }
                   />
                 ))}
@@ -316,31 +349,31 @@ export function App(): JSX.Element {
 
             <footer className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/95 px-6 py-3 shadow-[0_-12px_30px_rgba(15,23,42,0.08)] backdrop-blur">
               <div className="mx-auto flex max-w-6xl flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="text-sm text-slate-500">
-                {state.lastScan
-                  ? `Last scanned ${formatTimestamp(state.lastScan.completedAt)}`
-                  : 'No successful scan recorded yet.'}
-              </div>
-              <div className="flex gap-3">
-                <button
-                  className="rounded-2xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white"
-                  type="button"
-                  onClick={() => {
-                    void window.deviceWatch.rescan()
-                  }}
-                >
-                  RESCAN
-                </button>
-                <button
-                  className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700"
-                  type="button"
-                  onClick={() => {
-                    void window.deviceWatch.logout()
-                  }}
-                >
-                  LOG OUT
-                </button>
-              </div>
+                <div className="text-sm text-slate-500">
+                  {state.lastScan
+                    ? `Last scanned ${formatTimestamp(state.lastScan.completedAt)}`
+                    : 'No successful scan recorded yet.'}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    className="rounded-2xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white"
+                    type="button"
+                    onClick={() => {
+                      void window.deviceWatch.rescan()
+                    }}
+                  >
+                    RESCAN
+                  </button>
+                  <button
+                    className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700"
+                    type="button"
+                    onClick={() => {
+                      void window.deviceWatch.logout()
+                    }}
+                  >
+                    LOG OUT
+                  </button>
+                </div>
               </div>
             </footer>
           </>
@@ -350,10 +383,18 @@ export function App(): JSX.Element {
   )
 }
 
-function InfoItem({ label, value }: { label: string; value: string }): JSX.Element {
+function InfoItem({
+  label,
+  value
+}: {
+  label: string
+  value: string
+}): JSX.Element {
   return (
     <div className="rounded-2xl bg-slate-50 px-4 py-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{label}</p>
+      <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+        {label}
+      </p>
       <p className="mt-2 text-sm font-medium text-slate-700">{value}</p>
     </div>
   )
@@ -400,7 +441,9 @@ function ScanRow({
         onClick={onToggle}
       >
         <div className="flex items-center gap-2.5">
-          <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${statusPillClass(item.status)}`}>
+          <span
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${statusPillClass(item.status)}`}
+          >
             {item.status === FAIL ? '✕' : item.status === NUDGE ? '!' : '✓'}
           </span>
           <div>

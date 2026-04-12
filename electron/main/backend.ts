@@ -1,5 +1,9 @@
 import { config } from '../../src/config'
-import type { DeviceSnapshot, NormalizedPolicy, ScanResultData } from '@shared/models'
+import type {
+  DeviceSnapshot,
+  NormalizedPolicy,
+  ScanResultData
+} from '@shared/models'
 import { BackendError } from './backend-errors'
 import { logger } from './logging'
 import { waitForInternet } from './network'
@@ -14,7 +18,10 @@ export interface BackendApi {
   validateEmail(email: string): Promise<boolean>
   checkAccess(email: string): Promise<{ admin: boolean; companyName: string }>
   validateCode(email: string, code: string): Promise<boolean>
-  fetchPolicy(email: string, isMacOS: boolean): Promise<{ raw: unknown; parsed: NormalizedPolicy }>
+  fetchPolicy(
+    email: string,
+    isMacOS: boolean
+  ): Promise<{ raw: unknown; parsed: NormalizedPolicy }>
   sendScanResult(
     device: DeviceSnapshot,
     result: ScanResultData,
@@ -31,26 +38,39 @@ function buildFormData(fields: Record<string, string>): FormData {
   return formData
 }
 
-async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+async function fetchWithTimeout(
+  input: string,
+  init: RequestInit,
+  timeoutMs: number
+): Promise<Response> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
     return await fetch(input, { ...init, signal: controller.signal })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new BackendError('timeout', `Request timed out for ${input}`, { retryable: true })
+      throw new BackendError('timeout', `Request timed out for ${input}`, {
+        retryable: true
+      })
     }
-    throw new BackendError('network', `Network error for ${input}`, { details: error, retryable: true })
+    throw new BackendError('network', `Network error for ${input}`, {
+      details: error,
+      retryable: true
+    })
   } finally {
     clearTimeout(timer)
   }
 }
 
 function toBackendError(response: Response, context: string): BackendError {
-  return new BackendError('http', `${context} failed with HTTP ${response.status}`, {
-    statusCode: response.status,
-    retryable: response.status >= 500
-  })
+  return new BackendError(
+    'http',
+    `${context} failed with HTTP ${response.status}`,
+    {
+      statusCode: response.status,
+      retryable: response.status >= 500
+    }
+  )
 }
 
 function createRealBackend(): BackendApi {
@@ -58,9 +78,13 @@ function createRealBackend(): BackendApi {
     async validateEmail(email) {
       const online = await waitForInternet()
       if (!online) {
-        throw new BackendError('network', 'No internet connection before validateEmail', {
-          retryable: true
-        })
+        throw new BackendError(
+          'network',
+          'No internet connection before validateEmail',
+          {
+            retryable: true
+          }
+        )
       }
 
       const response = await fetchWithTimeout(
@@ -77,7 +101,11 @@ function createRealBackend(): BackendApi {
 
       if (!response.ok) {
         const text = await response.text()
-        logger.error('Validate email HTTP error', { email, body: text, status: response.status })
+        logger.error('Validate email HTTP error', {
+          email,
+          body: text,
+          status: response.status
+        })
         throw toBackendError(response, 'Validate email')
       }
 
@@ -101,7 +129,11 @@ function createRealBackend(): BackendApi {
 
       if (!response.ok) {
         const body = await response.text()
-        logger.error('Check access HTTP error', { email, body, status: response.status })
+        logger.error('Check access HTTP error', {
+          email,
+          body,
+          status: response.status
+        })
         throw toBackendError(response, 'Check access')
       }
 
@@ -125,7 +157,12 @@ function createRealBackend(): BackendApi {
 
       if (!response.ok) {
         const body = await response.text()
-        logger.error('Validate code HTTP error', { email, code, body, status: response.status })
+        logger.error('Validate code HTTP error', {
+          email,
+          code,
+          body,
+          status: response.status
+        })
         throw toBackendError(response, 'Validate code')
       }
 
@@ -134,9 +171,13 @@ function createRealBackend(): BackendApi {
         return result.valid === true
       } catch (error) {
         logger.error('Validate code parse error', { email, code, error })
-        throw new BackendError('unknown', 'Validate code response parsing failed', {
-          details: error
-        })
+        throw new BackendError(
+          'unknown',
+          'Validate code response parsing failed',
+          {
+            details: error
+          }
+        )
       }
     },
 
@@ -156,7 +197,11 @@ function createRealBackend(): BackendApi {
 
       if (!response.ok) {
         const body = await response.text()
-        logger.error('Policy HTTP error', { email, body, status: response.status })
+        logger.error('Policy HTTP error', {
+          email,
+          body,
+          status: response.status
+        })
         throw toBackendError(response, 'Policy fetch')
       }
 
@@ -165,10 +210,14 @@ function createRealBackend(): BackendApi {
 
       if (raw.status === 'error') {
         logger.error('Policy application-level error', { email, raw })
-        throw new BackendError('application', 'Policy response returned status=error', {
-          details: raw,
-          retryable: false
-        })
+        throw new BackendError(
+          'application',
+          'Policy response returned status=error',
+          {
+            details: raw,
+            retryable: false
+          }
+        )
       }
 
       return {
@@ -185,14 +234,20 @@ function createRealBackend(): BackendApi {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(getScanResultPayload(device, result, email, parsedUserPolicy))
+          body: JSON.stringify(
+            getScanResultPayload(device, result, email, parsedUserPolicy)
+          )
         },
         config.timeoutsMs.sendScanResult
       )
 
       const body = await response.text()
       if (!response.ok) {
-        logger.error('Send scan result HTTP error', { email, body, status: response.status })
+        logger.error('Send scan result HTTP error', {
+          email,
+          body,
+          status: response.status
+        })
         throw toBackendError(response, 'Send scan result')
       }
 
@@ -355,7 +410,8 @@ function getScanResultPayload(
   const appPolicyResult = {
     appsScanResult: result.appsPolicyResult.appsScanResult,
     installedProhibitedApps: result.appsPolicyResult.installedProhibitedApps,
-    missingRequiredAppsCategories: result.appsPolicyResult.missingRequiredAppsCategories
+    missingRequiredAppsCategories:
+      result.appsPolicyResult.missingRequiredAppsCategories
   }
 
   return {
