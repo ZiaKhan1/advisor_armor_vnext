@@ -79,6 +79,18 @@ Development mode should use the standard `electron-vite` flow:
 
 The project should rely on the package defaults where possible rather than rebuilding this logic manually.
 
+### 3.1 Renderer DevTools in Development
+
+In development mode only, the renderer window exposes Chromium DevTools through the renderer context menu:
+
+- right-click inside the app window
+- choose **Toggle Developer Tools**
+- use the normal Chromium panels such as Console, Elements, Sources, Application, and Network
+
+This is enabled only for unpackaged/dev runs. Production builds disable renderer DevTools.
+
+Renderer DevTools show renderer-process activity. Main-process work, including backend API calls made from `electron/main/backend.ts`, scan execution, updater logs, and filesystem access, is not expected to appear in the renderer DevTools Network panel. Those operations should be inspected through main-process logs and external proxy/debug tools when needed.
+
 ### 4. Produce Stable Outputs for Packaging
 
 Bundled outputs should be predictable and easy for `electron-builder` to consume.

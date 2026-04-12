@@ -1,7 +1,8 @@
-import { BrowserWindow, shell } from 'electron'
+import { BrowserWindow, Menu, app, shell } from 'electron'
 import { join } from 'node:path'
 
 export function createMainWindow(): BrowserWindow {
+  const isDevelopment = !app.isPackaged
   const window = new BrowserWindow({
     width: 1180,
     height: 840,
@@ -12,7 +13,8 @@ export function createMainWindow(): BrowserWindow {
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      devTools: isDevelopment
     }
   })
 
@@ -40,6 +42,19 @@ export function createMainWindow(): BrowserWindow {
   window.webContents.on('render-process-gone', (_event, details) => {
     console.error('Renderer process gone', details)
   })
+
+  if (isDevelopment) {
+    window.webContents.on('context-menu', () => {
+      Menu.buildFromTemplate([
+        {
+          label: 'Toggle Developer Tools',
+          click: () => {
+            window.webContents.toggleDevTools()
+          }
+        }
+      ]).popup({ window })
+    })
+  }
 
   return window
 }
