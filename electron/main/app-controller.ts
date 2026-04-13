@@ -291,7 +291,11 @@ export class AppController extends EventEmitter {
 
   async openAppStore(): Promise<void> {
     if (process.platform === 'darwin') {
-      await shell.openExternal('macappstore://')
+      const child = spawn('open', ['-a', 'App Store'], {
+        detached: true,
+        stdio: 'ignore'
+      })
+      child.unref()
       return
     }
 
