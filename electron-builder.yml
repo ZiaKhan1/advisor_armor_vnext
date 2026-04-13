@@ -5,6 +5,7 @@ directories:
   output: release
 files:
   - out/**
+  - assets/**
   - package.json
 asar: true
 mac:
