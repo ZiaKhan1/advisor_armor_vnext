@@ -9,11 +9,15 @@ deprecated: ~
 
 DeviceWatch is designed to be adopted by a single organisation. The codebase is generic by default (mock mode) and all organisation-specific values are committed in one config file that is switched in at build time.
 
+Use `DeviceWatch` for generic code, docs, and architecture naming. Use client-specific names such as `AdvisorArmor` where branding, backend contracts, installer metadata, app id, or runtime OS app identity require them.
+
+Within the codebase, prefer generic names for shared concepts. For example, keep version data as `appVersion` internally and map it to the backend field `advisorArmorVersion` only when constructing API requests.
+
 ## Principle
 
 - The base application runs in **mock mode** out of the box — no backend required
 - All organisation-specific values (API URLs, branding, contact info) live in **one committed config file**
-- A single flag (`mockMode`) controls whether the app uses mock or real behaviour throughout the codebase
+- A single flag (`useMockBackend`) controls whether the app uses mock or real behaviour throughout the codebase
 
 ## Config File
 
@@ -25,16 +29,27 @@ Single file, committed to the repo. Contains all configurable values:
 
 ```ts
 export const config = {
-  mockMode: import.meta.env.VITE_MOCK_MODE === 'true',
-  apiBaseUrl: 'https://api.acme.com/devicewatch',
-  appName: 'Acme Security Monitor',
+  validateEmailUrl: 'https://api.acme.com/devicewatch/validate-email',
+  validateCodeUrl: 'https://api.acme.com/devicewatch/validate-code',
+  checkAccessUrl: 'https://api.acme.com/devicewatch/check-access',
+  policyUrl: 'https://api.acme.com/devicewatch/policy',
+  sendScanResultUrl: 'https://api.acme.com/devicewatch/send-scan-result',
+  appName: 'AdvisorArmor',
   supportEmail: 'it@acme.com',
   troubleshootingUrl: 'https://acme.com/it/help',
-  mockOtpCode: '123456',
+  mockOtpCode: '1234',
+  useMockBackend: import.meta.env.VITE_MOCK_MODE === 'true',
+  validateEmailTimeoutMs: 20_000,
+  validateCodeTimeoutMs: 20_000,
+  checkAccessTimeoutMs: 20_000,
+  policyTimeoutMs: 30_000,
+  sendScanResultTimeoutMs: 20_000,
+  sendScanResultRetryMaxAttempts: 3,
+  sendScanResultRetryDelayMs: 5_000
 }
 ```
 
-`mockMode` is the only value driven by an environment variable — everything else is hardcoded in the file.
+`useMockBackend` is the only value driven by an environment variable — everything else is hardcoded in the file.
 
 ## Switching Modes
 
@@ -48,38 +63,66 @@ Controlled via npm scripts:
 ```
 
 - Default dev and build use real (company) values
-- `:mock` variants override `mockMode` to `true` via the environment variable
+- `:mock` variants override `useMockBackend` to `true` via the environment variable
 - Tests always run in mock mode (see below)
 
 ## Mock Behaviour in Code
 
-Service-layer code checks `config.mockMode` to decide whether to call real APIs or return mock responses:
+Service-layer code checks `config.useMockBackend` to decide whether to call real APIs or return mock responses:
 
 ```ts
 import { config } from '@/config'
 
 async function fetchPolicy() {
-  if (config.mockMode) return mockPolicyResponse
-  return await api.get(config.apiBaseUrl + '/policy')
+  if (config.useMockBackend) return mockPolicyResponse
+  return await api.post(config.policyUrl, formData)
 }
 ```
 
-Mock responses are defined alongside the service, not in config.
+Mock responses are defined in code as typed constants, not in config or external JSON files.
+They cover only the five backend APIs:
+
+- `validateEmail`
+- `validateCode`
+- `checkAccess`
+- `policy`
+- `sendScanResult`
 
 ## OTP Verification in Mock Mode
 
-When `mockMode` is `true`, the OTP email step accepts `config.mockOtpCode` as the valid code (default: `123456`). No email is sent.
+When mock backend mode is enabled:
+
+- any email can follow the successful onboarding path
+- `checkAccess` returns one fixed `{ admin, companyName }` object
+- the OTP step accepts `config.mockOtpCode` as the valid code (default: `1234`)
+- policy fetch returns one fixed backend-shaped policy object for all users
+- result submission always succeeds and returns plain text
 
 ## Testing
 
-Tests always run in mock mode. This is set directly in the test config — not relying on an env var — so tests are always self-contained regardless of how they are invoked:
+Mock backend mode should be the default for UI-flow and Playwright tests, but not a blanket rule for every test.
+
+Use mock backend mode for:
+
+- onboarding flow tests
+- renderer happy-path tests
+- Playwright tests that exercise backend-driven UI flows
+
+Do not rely on global mock mode for:
+
+- parser tests
+- command-runner tests
+- timeout and retry tests
+- error-classification tests
+
+When a test suite needs mock backend mode, set it directly in the test config so the suite stays self-contained regardless of how it is invoked:
 
 ```ts
 // vitest.config.ts
 process.env.VITE_MOCK_MODE = 'true'
 ```
 
-E2E tests (Playwright) follow the same rule.
+See `docs/architecture/testing.md` for the broader test strategy.
 
 ## Logo
 
@@ -91,30 +134,34 @@ assets/logo.png
 
 ## App Name & Icon (electron-builder)
 
-`productName` and `appId` live in the `build` section of `package.json`. All other electron-builder settings are in `electron-builder.yml`.
+`productName` and `appId` live in `electron-builder.yml`.
 
 ```json
 // package.json
 {
-  "name": "devicewatch",
-  "build": {
-    "productName": "Acme Security Monitor",
-    "appId": "com.acme.devicewatch"
-  }
+  "name": "advisorarmor"
 }
+```
+
+```yaml
+# electron-builder.yml
+appId: com.advisorarmor.desktop
+productName: AdvisorArmor
 ```
 
 ## What Is Configurable
 
-| Setting | Location |
-|---|---|
-| API base URL | `src/config.ts` |
-| Mock mode | `src/config.ts` (toggled via `VITE_MOCK_MODE`) |
-| Mock OTP code | `src/config.ts` |
-| App display name (UI) | `src/config.ts` |
-| Support email | `src/config.ts` |
-| Troubleshooting URL | `src/config.ts` |
-| In-app logo | `assets/logo.png` |
-| OS app name / installer name | `package.json` → `build.productName` |
-| App ID | `package.json` → `build.appId` |
-| App icon (dock/taskbar) | `assets/icon/` |
+| Setting                          | Location                                       |
+| -------------------------------- | ---------------------------------------------- |
+| Backend endpoint URLs            | `src/config.ts`                                |
+| Mock backend mode                | `src/config.ts` (toggled via `VITE_MOCK_MODE`) |
+| Mock OTP code                    | `src/config.ts`                                |
+| Backend client timeouts          | `src/config.ts`                                |
+| Result submission retry settings | `src/config.ts`                                |
+| App display name (UI)            | `src/config.ts`                                |
+| Support email                    | `src/config.ts`                                |
+| Troubleshooting URL              | `src/config.ts`                                |
+| In-app logo                      | `assets/logo.png`                              |
+| OS app name / installer name     | `electron-builder.yml` → `productName`         |
+| App ID                           | `electron-builder.yml` → `appId`               |
+| App icon (dock/taskbar)          | `assets/icon/`                                 |

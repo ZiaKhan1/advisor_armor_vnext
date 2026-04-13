@@ -1,0 +1,9 @@
+node_modules
+out
+release
+playwright-report
+test-results
+coverage
+dist
+.DS_Store
+*.log
