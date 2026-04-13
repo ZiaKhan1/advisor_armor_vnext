@@ -1,4 +1,4 @@
-import { app } from 'electron'
+import { app, type BrowserWindow } from 'electron'
 import { config } from '../../src/config'
 import { AppController } from './app-controller'
 import { registerIpc } from './ipc'
@@ -8,14 +8,31 @@ import { createMainWindow } from './window'
 
 app.setName(config.productName)
 
+const hasSingleInstanceLock = app.requestSingleInstanceLock()
 const controller = new AppController()
+const duplicateInstanceMessage =
+  'Another AdvisorArmor instance is already running; exiting duplicate process.'
+let mainWindow: BrowserWindow | null = null
+
+function showMainWindow(): void {
+  if (!mainWindow) {
+    return
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore()
+  }
+
+  mainWindow.show()
+  mainWindow.focus()
+}
 
 async function bootstrap(): Promise<void> {
   app.setLoginItemSettings({
     openAtLogin: true
   })
 
-  const mainWindow = createMainWindow()
+  mainWindow = createMainWindow()
   controller.setWindow(mainWindow)
   registerIpc(controller)
 
@@ -26,10 +43,7 @@ async function bootstrap(): Promise<void> {
   }
 
   createTray({
-    showMainWindow: () => {
-      mainWindow.show()
-      mainWindow.focus()
-    },
+    showMainWindow,
     rescan: () => {
       void controller.rescan()
     },
@@ -41,9 +55,19 @@ async function bootstrap(): Promise<void> {
   await controller.initialize()
 }
 
-app.whenReady().then(() => {
-  void bootstrap()
-})
+if (!hasSingleInstanceLock) {
+  logger.info(duplicateInstanceMessage, { pid: process.pid })
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    logger.info('Second application instance requested; focusing existing window')
+    showMainWindow()
+  })
+
+  app.whenReady().then(() => {
+    void bootstrap()
+  })
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
