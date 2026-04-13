@@ -15,7 +15,7 @@ export function createTray(handlers: TrayHandlers): Tray {
   const tray = new Tray(image.isEmpty() ? nativeImage.createEmpty() : image)
 
   const menu = Menu.buildFromTemplate([
-    { label: 'Show AdvisorArmor', click: handlers.showMainWindow },
+    { label: `Show ${config.displayName}`, click: handlers.showMainWindow },
     { type: 'separator' },
     { label: 'Rescan', click: handlers.rescan },
     { label: 'Check for Update', click: handlers.checkForUpdates },
@@ -34,7 +34,7 @@ export function createTray(handlers: TrayHandlers): Tray {
             void shell.openExternal(config.troubleshootingUrl)
           }
         },
-        { label: 'App version 0.1.0', enabled: false },
+        { label: `App version ${app.getVersion()}`, enabled: false },
         { label: 'Copy Debug Info', enabled: false }
       ]
     },

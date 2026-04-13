@@ -175,6 +175,7 @@ export interface UpdateState {
 
 export interface RendererState {
   screen: Screen
+  appTitle: string
   busy: boolean
   title: string
   message: string | null

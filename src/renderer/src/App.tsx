@@ -10,8 +10,9 @@ type TabKey = 'scan' | 'training' | 'report' | 'news'
 
 const initialState: RendererState = {
   screen: 'loading',
+  appTitle: 'Advisor Armor',
   busy: true,
-  title: 'Loading AdvisorArmor',
+  title: 'Loading Advisor Armor',
   message: 'Loading application...',
   errorMessage: null,
   pendingEmail: null,
@@ -89,6 +90,10 @@ export function App(): JSX.Element {
     }
   }, [])
 
+  useEffect(() => {
+    document.title = state.appTitle
+  }, [state.appTitle])
+
   const submissionMessage = useMemo(() => {
     if (state.submission.phase === 'submitting') {
       return state.submission.attempt === 1
@@ -107,7 +112,7 @@ export function App(): JSX.Element {
               AA
             </div>
             <h1 className="text-3xl font-semibold tracking-tight">
-              AdvisorArmor
+              {state.appTitle}
             </h1>
           </div>
 
@@ -256,7 +261,7 @@ export function App(): JSX.Element {
                   <h1 className="truncate text-xl font-semibold">
                     {state.currentScan.companyName ??
                       state.user?.companyName ??
-                      'AdvisorArmor'}
+                      state.appTitle}
                   </h1>
                   <p className="truncate text-sm text-slate-500">
                     {state.user?.email}

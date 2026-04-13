@@ -1,10 +1,13 @@
 import { BrowserWindow, Menu, app, shell } from 'electron'
 import { join } from 'node:path'
+import { config } from '../../src/config'
 import { logger } from './logging'
 
 export function createMainWindow(): BrowserWindow {
   const isDevelopment = !app.isPackaged
+  const appTitle = `${config.displayName} (v${app.getVersion()})`
   const window = new BrowserWindow({
+    title: appTitle,
     width: 1180,
     height: 840,
     minWidth: 1024,
@@ -39,6 +42,7 @@ export function createMainWindow(): BrowserWindow {
   )
 
   window.webContents.on('did-finish-load', () => {
+    window.setTitle(appTitle)
     logger.info('Main window finished load')
   })
 
