@@ -1,4 +1,4 @@
-import { app, type BrowserWindow } from 'electron'
+import { app, type BrowserWindow, type Tray } from 'electron'
 import { config } from '../../src/config'
 import { AppController } from './app-controller'
 import { registerIpc } from './ipc'
@@ -13,6 +13,7 @@ const controller = new AppController()
 const duplicateInstanceMessage =
   'Another AdvisorArmor instance is already running; exiting duplicate process.'
 let mainWindow: BrowserWindow | null = null
+let tray: Tray | null = null
 
 function showMainWindow(): void {
   if (!mainWindow) {
@@ -42,7 +43,7 @@ async function bootstrap(): Promise<void> {
     await mainWindow.loadFile('out/renderer/index.html')
   }
 
-  createTray({
+  tray = createTray({
     showMainWindow,
     rescan: () => {
       void controller.rescan()
@@ -56,7 +57,7 @@ async function bootstrap(): Promise<void> {
 }
 
 if (!hasSingleInstanceLock) {
-  logger.info(duplicateInstanceMessage, { pid: process.pid })
+  logger.info(duplicateInstanceMessage)
   app.quit()
 } else {
   app.on('second-instance', () => {
