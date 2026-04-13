@@ -1,6 +1,6 @@
-# DeviceWatch
+# Advisor Armor
 
-Electron desktop client for AdvisorArmor / DeviceWatch.
+Electron desktop client for Advisor Armor / DeviceWatch.
 
 ## Scripts
 
@@ -22,3 +22,48 @@ Electron desktop client for AdvisorArmor / DeviceWatch.
 Packaged output is written to `release/`.
 
 For macOS distribution, build and publish the universal artifact with `npm run dist:mac:universal`. Current-architecture macOS builds are acceptable for local testing, but distribution builds should be universal so the same installer supports both `x64` Intel Macs and `arm64` Apple Silicon Macs.
+
+## Logs
+
+The app uses `electron-log` from the Electron main process. File logs use the
+default Electron/electron-log per-app location for the app name
+`AdvisorArmor`.
+
+`Advisor Armor` is the user-facing display name. `AdvisorArmor` remains the
+runtime app identity used for packaged app metadata and OS storage/log paths.
+
+### macOS
+
+Dev mode and installed app:
+
+```text
+~/Library/Logs/AdvisorArmor/main.log
+```
+
+Example for user `ziakhan`:
+
+```text
+/Users/ziakhan/Library/Logs/AdvisorArmor/main.log
+```
+
+Here `~` expands to the current user's home directory, for example
+`/Users/ziakhan`.
+
+### Windows
+
+Dev mode and installed app:
+
+```text
+%USERPROFILE%\AppData\Roaming\AdvisorArmor\logs\main.log
+```
+
+Example:
+
+```text
+C:\Users\<username>\AppData\Roaming\AdvisorArmor\logs\main.log
+```
+
+Dev and installed builds are expected to write to the same log path when they
+run under the same OS user and use the same app name. If a log directory is
+created by another user, such as `root` or Administrator, the app may fail to
+write logs until the directory ownership or permissions are corrected.

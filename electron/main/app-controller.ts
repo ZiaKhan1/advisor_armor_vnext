@@ -1,4 +1,4 @@
-import { BrowserWindow, shell } from 'electron'
+import { BrowserWindow, app, shell } from 'electron'
 import { spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { config } from '../../src/config'
@@ -17,6 +17,7 @@ import { Storage } from './storage'
 import { UpdateService } from './update-service'
 
 export class AppController extends EventEmitter {
+  private readonly appTitle = `${config.displayName} (v${app.getVersion()})`
   private readonly storage = new Storage()
   private readonly backend: BackendApi = createBackend()
   private readonly updateService = new UpdateService()
@@ -30,8 +31,9 @@ export class AppController extends EventEmitter {
   } | null = null
   private state: RendererState = {
     screen: 'loading',
+    appTitle: this.appTitle,
     busy: true,
-    title: 'Starting AdvisorArmor',
+    title: `Starting ${config.displayName}`,
     message: 'Loading application...',
     errorMessage: null,
     pendingEmail: null,
@@ -80,7 +82,7 @@ export class AppController extends EventEmitter {
     this.patchState({
       screen: 'email',
       busy: false,
-      title: 'AdvisorArmor',
+      title: this.appTitle,
       message: null
     })
   }
@@ -93,7 +95,7 @@ export class AppController extends EventEmitter {
     this.patchState({
       busy: true,
       errorMessage: null,
-      title: 'AdvisorArmor',
+      title: this.appTitle,
       message: 'Validating email address...'
     })
 
@@ -198,7 +200,7 @@ export class AppController extends EventEmitter {
     this.patchState({
       screen: 'email',
       busy: false,
-      title: 'AdvisorArmor',
+      title: this.appTitle,
       message: null,
       errorMessage: null,
       pendingEmail: null,
@@ -287,6 +289,21 @@ export class AppController extends EventEmitter {
     )
   }
 
+  async openAppStore(): Promise<void> {
+    if (process.platform === 'darwin') {
+      const child = spawn('open', ['-a', 'App Store'], {
+        detached: true,
+        stdio: 'ignore'
+      })
+      child.unref()
+      return
+    }
+
+    logger.warn('Opening App Store is not supported on this platform', {
+      platform: process.platform
+    })
+  }
+
   async checkForUpdates(): Promise<void> {
     await this.updateService.checkForUpdates()
   }
@@ -345,7 +362,7 @@ export class AppController extends EventEmitter {
         lastScan,
         screen: 'results',
         busy: false,
-        title: 'AdvisorArmor',
+        title: this.appTitle,
         message: null,
         errorMessage: null,
         currentScan: {
@@ -364,8 +381,7 @@ export class AppController extends EventEmitter {
       )
     } catch (error) {
       logger.error('Start scan flow failed', error)
-      const genericMessage =
-        'AdvisorArmor needs an internet connection to run a scan.'
+      const genericMessage = `${config.displayName} needs an internet connection to run a scan.`
       if (isBackendError(error)) {
         logger.error('Backend failure classification', {
           type: error.type,

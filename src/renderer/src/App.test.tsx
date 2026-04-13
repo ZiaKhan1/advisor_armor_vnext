@@ -25,8 +25,9 @@ function createRendererState(
 ): RendererState {
   return {
     screen: 'email',
+    appTitle: 'Advisor Armor (v0.1.0)',
     busy: false,
-    title: 'AdvisorArmor',
+    title: 'Advisor Armor (v0.1.0)',
     message: null,
     errorMessage: null,
     pendingEmail: null,
@@ -143,7 +144,8 @@ function installDeviceWatch(state: RendererState): DeviceWatchApi {
     openSupportEmail: async () => undefined,
     openTroubleshooting: async () => undefined,
     openFirewallSettings: async () => undefined,
-    openDiskEncryptionSettings: async () => undefined
+    openDiskEncryptionSettings: async () => undefined,
+    openAppStore: async () => undefined
   }
   window.deviceWatch = api
   return api
@@ -155,7 +157,7 @@ beforeEach(() => {
 
 it('renders login screen', async () => {
   render(<App />)
-  expect(await screen.findByText('AdvisorArmor')).toBeInTheDocument()
+  expect(await screen.findByText('Advisor Armor (v0.1.0)')).toBeInTheDocument()
   expect(screen.getByLabelText('Email address')).toBeInTheDocument()
 })
 

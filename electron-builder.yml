@@ -5,15 +5,20 @@ directories:
   output: release
 files:
   - out/**
+  - assets/**
+  - '!assets/.DS_Store'
+  - '!assets/Thumbs.db'
   - package.json
 asar: true
 mac:
+  icon: assets/icon.icns
   category: public.app-category.utilities
   identity: null
   target:
     - dmg
     - zip
 win:
+  icon: assets/icon.ico
   target:
     - nsis
 publish:

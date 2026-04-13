@@ -19,7 +19,7 @@ try {
   console.error('Renderer bootstrap failed', error)
   rootElement.innerHTML = `
     <div style="padding:24px;font-family:Segoe UI,sans-serif">
-      <h1>AdvisorArmor failed to render</h1>
+      <h1>Advisor Armor failed to render</h1>
       <pre style="white-space:pre-wrap">${String(error)}</pre>
     </div>
   `

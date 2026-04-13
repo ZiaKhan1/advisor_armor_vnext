@@ -13,12 +13,15 @@ import {
   isDiskEncryptionOk,
   readDiskEncryptionState
 } from './scan-checks/disk-encryption'
+import { readAutomaticUpdates } from './scan-checks/automatic-updates'
 import { readFirewallEnabled } from './scan-checks/firewall'
 
 const FIREWALL_DESCRIPTION =
   'Firewalls control network traffic into and out of a system. Enabling the firewall on your device can prevent network-based attacks on your system and is especially important if you make use of unsecured wireless networks (such as at coffee shops and airports).'
 const DISK_ENCRYPTION_DESCRIPTION =
   "Full-disk encryption protects data at rest from being accessed by a party who does not know the password or decryption key. Systems containing internal data should be encrypted. It is every employee's responsibility to keep internal data safe."
+const AUTOMATIC_UPDATES_DESCRIPTION =
+  'One of the most important things you can do to secure your device(s) is to keep your operating system and software up to date. New vulnerabilities and weaknesses are found every day so frequent updates are essential to ensuring your device(s) include the latest fixes and preventative measures. Enabling automatic updating helps ensure your machine is up-to-date without having to manually install updates.'
 
 async function resolvePublicIp(): Promise<string> {
   for (const url of [
@@ -43,6 +46,7 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
   const firewallEnabled = await readFirewallEnabled(currentPlatform)
   const diskEncryptionState = await readDiskEncryptionState(currentPlatform)
   const diskEncryptionEnabled = isDiskEncryptionOk(diskEncryptionState)
+  const automaticUpdates = await readAutomaticUpdates(currentPlatform)
 
   const wifiConnections: WifiConnection[] = [
     {
@@ -74,8 +78,9 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
     firewallEnabled,
     diskEncryptionEnabled,
     diskEncryptionState,
-    // Provisional bottom-layer values are acceptable in v1 scaffolding.
-    automaticUpdatesEnabled: false,
+    // Remaining provisional bottom-layer values are acceptable in v1 scaffolding.
+    automaticUpdates,
+    automaticUpdatesEnabled: automaticUpdates.enabled,
     remoteLoginEnabled: false,
     winDefenderEnabled: currentPlatform === 'win32' ? true : null,
     activeWifiSecure: true,
@@ -290,10 +295,14 @@ export function evaluateDevice(
       'automaticUpdates',
       'Automatic Updates',
       automaticUpdates,
-      device.automaticUpdatesEnabled
-        ? 'Automatic updates appear enabled.'
-        : 'Automatic updates appear disabled.',
-      'Turn on automatic operating system updates.'
+      describeAutomaticUpdatesState(device),
+      recommendAutomaticUpdatesAction(device.platform, automaticUpdates),
+      AUTOMATIC_UPDATES_DESCRIPTION,
+      getAutomaticUpdatesDescriptionSteps(
+        device.platform,
+        automaticUpdates,
+        device.automaticUpdates
+      )
     ),
     buildElement(
       'remoteLogin',
@@ -473,6 +482,115 @@ function getDiskEncryptionDescriptionSteps(
   ]
 }
 
+function getAutomaticUpdatesDescriptionSteps(
+  currentPlatform: string,
+  status: PolicyStatus,
+  automaticUpdates: DeviceSnapshot['automaticUpdates']
+): ScanElementDescriptionStep[] {
+  if (currentPlatform === 'darwin') {
+    if (automaticUpdates.mojaveOrLater === false) {
+      return [
+        { text: 'Choose System Settings from the Apple menu.' },
+        {
+          text: 'Click ',
+          linkText: 'App Store',
+          linkUrl: 'prefs://com.apple.preferences.appstore',
+          suffix: '.'
+        },
+        { text: 'Ensure automatic updates are On.' }
+      ]
+    }
+
+    const steps: ScanElementDescriptionStep[] = [
+      { text: 'Choose System Settings from the Apple menu.' },
+      {
+        text: 'Click ',
+        linkText: 'Software Update',
+        linkUrl:
+          'x-apple.systempreferences:com.apple.preferences.softwareupdate',
+        suffix: '.'
+      }
+    ]
+
+    const checks = automaticUpdates.checks.filter(
+      (check) =>
+        automaticUpdates.tahoeOrLater !== true ||
+        check.key !== 'automaticAppUpdates'
+    )
+
+    steps.push({
+      text: 'Click on the info icon in front of Automatic Updates and make sure the following are checked:',
+      children: checks.map((check) => ({
+        text: check.label,
+        status: automaticUpdateCheckStatus(check.enabled)
+      }))
+    })
+
+    if (automaticUpdates.tahoeOrLater === true) {
+      const appUpdates = automaticUpdates.checks.find(
+        (check) => check.key === 'automaticAppUpdates'
+      )
+
+      steps.push(
+        {
+          text: 'Open ',
+          linkText: 'App Store',
+          action: 'openAppStore',
+          suffix: '.'
+        },
+        {
+          text: 'Click on the App Store menu at the top and then click Settings.'
+        },
+        {
+          text: 'In the dialog, check the Automatic Updates checkbox.',
+          status: appUpdates
+            ? automaticUpdateCheckStatus(appUpdates.enabled)
+            : undefined
+        }
+      )
+    }
+
+    return steps
+  }
+
+  if (currentPlatform === 'win32') {
+    if (status === PASS) {
+      return [
+        {
+          text: 'Open ',
+          linkText: 'Windows Update',
+          linkUrl: 'ms-settings:windowsupdate',
+          suffix: ' settings.'
+        },
+        {
+          text: 'You must not pause the updates in the Windows Update settings.'
+        },
+        {
+          text: 'If you ever happen to pause the updates, you would see a "Resume updates" button at top of the settings. Click on the button to enable automatic updates.'
+        }
+      ]
+    }
+
+    return [
+      {
+        text: 'Open ',
+        linkText: 'Windows Update',
+        linkUrl: 'ms-settings:windowsupdate',
+        suffix: ' settings.'
+      },
+      {
+        text: 'Click on the "Resume updates" button to enable automatic updates.'
+      }
+    ]
+  }
+
+  return [
+    {
+      text: 'Open device update settings and ensure automatic updates are enabled.'
+    }
+  ]
+}
+
 function describeAppState(
   prohibitedApps: string[],
   missingCategories: string[]
@@ -572,6 +690,22 @@ function describeDiskEncryptionState(
   return 'Disk encryption status could not be determined.'
 }
 
+function describeAutomaticUpdatesState(device: DeviceSnapshot): string {
+  if (device.automaticUpdatesEnabled == null) {
+    return 'Automatic update settings could not be fully verified.'
+  }
+
+  if (device.platform === 'win32') {
+    return device.automaticUpdatesEnabled
+      ? 'Windows updates do not appear to be paused.'
+      : 'Windows updates appear to be paused.'
+  }
+
+  return device.automaticUpdatesEnabled
+    ? 'Automatic updates appear enabled.'
+    : 'One or more automatic update settings appear disabled.'
+}
+
 function recommendDiskEncryptionAction(
   currentPlatform: string,
   state: DeviceSnapshot['diskEncryptionState']
@@ -609,6 +743,33 @@ function recommendDiskEncryptionAction(
   }
 
   return 'Turn on full-disk encryption.'
+}
+
+function recommendAutomaticUpdatesAction(
+  currentPlatform: string,
+  status: PolicyStatus
+): string {
+  if (status === PASS) {
+    return 'No action required.'
+  }
+
+  if (currentPlatform === 'win32') {
+    return 'Open Windows Update settings and click Resume updates.'
+  }
+
+  if (currentPlatform === 'darwin') {
+    return 'Open Software Update settings and turn on automatic updates.'
+  }
+
+  return 'Turn on automatic operating system updates.'
+}
+
+function automaticUpdateCheckStatus(enabled: boolean | null): PolicyStatus {
+  if (enabled === false) {
+    return FAIL
+  }
+
+  return PASS
 }
 
 function recommendFirewallAction(

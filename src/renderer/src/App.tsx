@@ -10,8 +10,9 @@ type TabKey = 'scan' | 'training' | 'report' | 'news'
 
 const initialState: RendererState = {
   screen: 'loading',
+  appTitle: 'Advisor Armor',
   busy: true,
-  title: 'Loading AdvisorArmor',
+  title: 'Loading Advisor Armor',
   message: 'Loading application...',
   errorMessage: null,
   pendingEmail: null,
@@ -89,6 +90,10 @@ export function App(): JSX.Element {
     }
   }, [])
 
+  useEffect(() => {
+    document.title = state.appTitle
+  }, [state.appTitle])
+
   const submissionMessage = useMemo(() => {
     if (state.submission.phase === 'submitting') {
       return state.submission.attempt === 1
@@ -107,7 +112,7 @@ export function App(): JSX.Element {
               AA
             </div>
             <h1 className="text-3xl font-semibold tracking-tight">
-              AdvisorArmor
+              {state.appTitle}
             </h1>
           </div>
 
@@ -256,7 +261,7 @@ export function App(): JSX.Element {
                   <h1 className="truncate text-xl font-semibold">
                     {state.currentScan.companyName ??
                       state.user?.companyName ??
-                      'AdvisorArmor'}
+                      state.appTitle}
                   </h1>
                   <p className="truncate text-sm text-slate-500">
                     {state.user?.email}
@@ -470,7 +475,9 @@ function ScanRow({
               ))}
             </ol>
           ) : null}
-          {item.key === 'firewall' || item.key === 'diskEncryption' ? null : (
+          {item.key === 'firewall' ||
+          item.key === 'diskEncryption' ||
+          item.key === 'automaticUpdates' ? null : (
             <>
               <p className="mt-2 font-medium text-slate-800">
                 Recommended action
@@ -491,32 +498,50 @@ function DescriptionStep({
 }): JSX.Element {
   return (
     <li>
-      {step.text}
-      {step.linkText && step.linkUrl ? (
-        <a
-          className="font-medium text-sky-700 underline underline-offset-2"
-          href={step.linkUrl}
-          rel="noreferrer"
-          target="_blank"
-        >
-          {step.linkText}
-        </a>
-      ) : step.linkText && step.action ? (
-        <button
-          className="font-medium text-sky-700 underline underline-offset-2"
-          type="button"
-          onClick={() => {
-            if (step.action === 'openFirewallSettings') {
-              void window.deviceWatch.openFirewallSettings()
-              return
-            }
-            void window.deviceWatch.openDiskEncryptionSettings()
-          }}
-        >
-          {step.linkText}
-        </button>
+      <span className={step.status ? statusTextClass(step.status) : undefined}>
+        {step.status ? (
+          <span className="mr-2 font-bold">
+            {step.status === FAIL ? '✕' : step.status === NUDGE ? '!' : '✓'}
+          </span>
+        ) : null}
+        {step.text}
+        {step.linkText && step.linkUrl ? (
+          <a
+            className="font-medium text-sky-700 underline underline-offset-2"
+            href={step.linkUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            {step.linkText}
+          </a>
+        ) : step.linkText && step.action ? (
+          <button
+            className="font-medium text-sky-700 underline underline-offset-2"
+            type="button"
+            onClick={() => {
+              if (step.action === 'openFirewallSettings') {
+                void window.deviceWatch.openFirewallSettings()
+                return
+              }
+              if (step.action === 'openDiskEncryptionSettings') {
+                void window.deviceWatch.openDiskEncryptionSettings()
+                return
+              }
+              void window.deviceWatch.openAppStore()
+            }}
+          >
+            {step.linkText}
+          </button>
+        ) : null}
+        {step.suffix}
+      </span>
+      {step.children && step.children.length > 0 ? (
+        <ol className="mt-2 list-decimal space-y-2 pl-5">
+          {step.children.map((child, index) => (
+            <DescriptionStep key={`${child.text}-${index}`} step={child} />
+          ))}
+        </ol>
       ) : null}
-      {step.suffix}
     </li>
   )
 }
@@ -539,6 +564,16 @@ function statusPillClass(status: string): string {
     return 'bg-amber-50 text-warning'
   }
   return 'bg-emerald-50 text-success'
+}
+
+function statusTextClass(status: string): string {
+  if (status === FAIL) {
+    return 'font-medium text-danger'
+  }
+  if (status === NUDGE) {
+    return 'font-medium text-warning'
+  }
+  return 'font-medium text-success'
 }
 
 function formatTimestamp(value: string): string {

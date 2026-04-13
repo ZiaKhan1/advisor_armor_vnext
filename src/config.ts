@@ -4,6 +4,7 @@ const env = process.env
 
 export const config = {
   productName: 'AdvisorArmor',
+  displayName: 'Advisor Armor',
   internalProductName: 'DeviceWatch',
   supportEmail: env.SUPPORT_EMAIL ?? 'support@example.com',
   troubleshootingUrl:
