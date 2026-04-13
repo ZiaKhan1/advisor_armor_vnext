@@ -252,7 +252,11 @@ export function evaluateDevice(
       'Firewall',
       firewall,
       describeFirewallState(device.platform, device.firewallEnabled, firewall),
-      recommendFirewallAction(device.platform, device.firewallEnabled, firewall),
+      recommendFirewallAction(
+        device.platform,
+        device.firewallEnabled,
+        firewall
+      ),
       FIREWALL_DESCRIPTION,
       getFirewallDescriptionSteps(device.platform)
     ),
@@ -389,7 +393,8 @@ function getFirewallDescriptionSteps(
       {
         text: 'Click ',
         linkText: 'Network',
-        linkUrl: 'x-apple.systempreferences:com.apple.Network-Settings.extension',
+        linkUrl:
+          'x-apple.systempreferences:com.apple.Network-Settings.extension',
         suffix: '.'
       },
       { text: 'Click Firewall.' },
@@ -417,7 +422,9 @@ function getFirewallDescriptionSteps(
     ]
   }
 
-  return [{ text: 'Open device settings and ensure the system firewall is on.' }]
+  return [
+    { text: 'Open device settings and ensure the system firewall is on.' }
+  ]
 }
 
 function getDiskEncryptionDescriptionSteps(

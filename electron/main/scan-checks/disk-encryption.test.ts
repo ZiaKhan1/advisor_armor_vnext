@@ -16,13 +16,17 @@ describe('parseMacDiskEncryptionState', () => {
 
   it('detects FileVault encryption in progress', () => {
     expect(
-      parseMacDiskEncryptionState('Encryption in progress: Percent completed = 42')
+      parseMacDiskEncryptionState(
+        'Encryption in progress: Percent completed = 42'
+      )
     ).toBe('encrypting')
   })
 
   it('detects FileVault decryption in progress', () => {
     expect(
-      parseMacDiskEncryptionState('Decryption in progress: Percent completed = 42')
+      parseMacDiskEncryptionState(
+        'Decryption in progress: Percent completed = 42'
+      )
     ).toBe('decrypting')
   })
 

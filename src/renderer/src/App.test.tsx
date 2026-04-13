@@ -278,18 +278,14 @@ it('opens disk encryption settings from a scan row action', async () => {
                   action: 'openDiskEncryptionSettings'
                 }
               ],
-              fixInstruction:
-                'Turn on BitLocker for the Windows system drive.'
+              fixInstruction: 'Turn on BitLocker for the Windows system drive.'
             })
           ]
         }
       }
     })
   )
-  const openDiskEncryptionSettings = vi.spyOn(
-    api,
-    'openDiskEncryptionSettings'
-  )
+  const openDiskEncryptionSettings = vi.spyOn(api, 'openDiskEncryptionSettings')
 
   render(<App />)
 

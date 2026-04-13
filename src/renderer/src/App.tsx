@@ -463,7 +463,10 @@ function ScanRow({
           {item.descriptionSteps && item.descriptionSteps.length > 0 ? (
             <ol className="mt-3 list-decimal space-y-1 pl-5">
               {item.descriptionSteps.map((step, index) => (
-                <DescriptionStep key={`${item.key}-step-${index}`} step={step} />
+                <DescriptionStep
+                  key={`${item.key}-step-${index}`}
+                  step={step}
+                />
               ))}
             </ol>
           ) : null}

@@ -336,8 +336,7 @@ describe('evaluateDevice disk encryption result', () => {
     expect(result.diskEncryption).toBe(FAIL)
     expect(diskEncryption).toMatchObject({
       status: FAIL,
-      detail:
-        'BitLocker appears to be suspended for the Windows system drive.',
+      detail: 'BitLocker appears to be suspended for the Windows system drive.',
       fixInstruction:
         'Resume BitLocker protection for the Windows system drive.'
     })
