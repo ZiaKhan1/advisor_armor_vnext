@@ -56,11 +56,6 @@ function createDevice(overrides: Partial<DeviceSnapshot> = {}): DeviceSnapshot {
       enabled: true,
       checks: [
         {
-          key: 'automaticCheckEnabled',
-          label: 'Check for updates',
-          enabled: true
-        },
-        {
           key: 'automaticDownloadUpdates',
           label: 'Download new updates when available',
           enabled: true
@@ -213,11 +208,6 @@ describe('evaluateDevice automatic updates result', () => {
           enabled: false,
           checks: [
             {
-              key: 'automaticCheckEnabled',
-              label: 'Check for updates',
-              enabled: true
-            },
-            {
               key: 'automaticDownloadUpdates',
               label: 'Download new updates when available',
               enabled: true
@@ -267,7 +257,6 @@ describe('evaluateDevice automatic updates result', () => {
         {
           text: 'Click on the info icon in front of Automatic Updates and make sure the following are checked:',
           children: [
-            { text: 'Check for updates', status: PASS },
             {
               text: 'Download new updates when available',
               status: PASS
@@ -297,11 +286,6 @@ describe('evaluateDevice automatic updates result', () => {
           enabled: null,
           checks: [
             {
-              key: 'automaticCheckEnabled',
-              label: 'Check for updates',
-              enabled: true
-            },
-            {
               key: 'automaticDownloadUpdates',
               label: 'Download new updates when available',
               enabled: null
@@ -323,6 +307,51 @@ describe('evaluateDevice automatic updates result', () => {
       status: PASS,
       detail: 'Automatic update settings could not be fully verified.',
       fixInstruction: 'No action required.'
+    })
+  })
+
+  it('shows macOS checklist details when automatic updates pass', () => {
+    const result = evaluateDevice(
+      createDevice(),
+      createPolicy({ automaticUpdates: FAIL })
+    )
+
+    const automaticUpdates = result.elements.find(
+      (item) => item.key === 'automaticUpdates'
+    )
+
+    expect(result.automaticUpdates).toBe(PASS)
+    expect(automaticUpdates).toMatchObject({
+      status: PASS,
+      detail: 'Automatic updates appear enabled.',
+      descriptionSteps: [
+        { text: 'Choose System Settings from the Apple menu.' },
+        {
+          text: 'Click ',
+          linkText: 'Software Update',
+          linkUrl:
+            'x-apple.systempreferences:com.apple.preferences.softwareupdate',
+          suffix: '.'
+        },
+        {
+          text: 'Click on the info icon in front of Automatic Updates and make sure the following are checked:',
+          children: [
+            {
+              text: 'Download new updates when available',
+              status: PASS
+            },
+            { text: 'Install macOS updates', status: PASS },
+            {
+              text: 'Install application updates from the App Store',
+              status: PASS
+            },
+            {
+              text: 'Install Security Responses and system files',
+              status: PASS
+            }
+          ]
+        }
+      ]
     })
   })
 

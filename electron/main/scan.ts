@@ -512,11 +512,6 @@ function getAutomaticUpdatesDescriptionSteps(
       }
     ]
 
-    if (status === PASS) {
-      steps.push({ text: 'Ensure automatic updates are on.' })
-      return steps
-    }
-
     const checks = automaticUpdates.checks.filter(
       (check) =>
         automaticUpdates.tahoeOrLater !== true ||

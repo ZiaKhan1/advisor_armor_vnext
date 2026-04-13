@@ -22,12 +22,6 @@ const MAC_COMMERCE_DOMAIN = '/Library/Preferences/com.apple.commerce'
 
 const MAC_AUTOMATIC_UPDATE_SETTINGS: MacAutomaticUpdateSetting[] = [
   {
-    key: 'automaticCheckEnabled',
-    label: 'Check for updates',
-    domain: MAC_SOFTWARE_UPDATE_DOMAIN,
-    preferenceKeys: ['AutomaticCheckEnabled']
-  },
-  {
     key: 'automaticDownloadUpdates',
     label: 'Download new updates when available',
     domain: MAC_SOFTWARE_UPDATE_DOMAIN,
