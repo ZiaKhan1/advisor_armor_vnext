@@ -6,4 +6,5 @@ test-results
 coverage
 dist
 .DS_Store
+Thumbs.db
 *.log

@@ -7,6 +7,7 @@ files:
   - out/**
   - assets/**
   - '!assets/.DS_Store'
+  - '!assets/Thumbs.db'
   - package.json
 asar: true
 mac:

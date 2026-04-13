@@ -33,7 +33,14 @@ async function bootstrap(): Promise<void> {
     openAtLogin: true
   })
 
-  mainWindow = createMainWindow()
+  mainWindow = createMainWindow({
+    rescan: () => {
+      void controller.rescan()
+    },
+    checkForUpdates: () => {
+      void controller.checkForUpdates()
+    }
+  })
   controller.setWindow(mainWindow)
   registerIpc(controller)
 
@@ -50,6 +57,10 @@ async function bootstrap(): Promise<void> {
     },
     checkForUpdates: () => {
       void controller.checkForUpdates()
+    },
+    toggleDeveloperTools: () => {
+      showMainWindow()
+      mainWindow?.webContents.toggleDevTools()
     }
   })
 

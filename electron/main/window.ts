@@ -1,10 +1,15 @@
-import { BrowserWindow, Menu, app, shell } from 'electron'
+import { BrowserWindow, app, shell } from 'electron'
 import { join } from 'node:path'
 import { config } from '../../src/config'
+import { createAppContextMenu } from './app-menu'
 import { logger } from './logging'
 
-export function createMainWindow(): BrowserWindow {
-  const isDevelopment = !app.isPackaged
+export interface MainWindowHandlers {
+  checkForUpdates: () => void
+  rescan: () => void
+}
+
+export function createMainWindow(handlers: MainWindowHandlers): BrowserWindow {
   const appTitle = `${config.displayName} (v${app.getVersion()})`
   const window = new BrowserWindow({
     title: appTitle,
@@ -18,7 +23,7 @@ export function createMainWindow(): BrowserWindow {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      devTools: isDevelopment
+      devTools: true
     }
   })
 
@@ -62,18 +67,18 @@ export function createMainWindow(): BrowserWindow {
     logger.error('Renderer process gone', details)
   })
 
-  if (isDevelopment) {
-    window.webContents.on('context-menu', () => {
-      Menu.buildFromTemplate([
-        {
-          label: 'Toggle Developer Tools',
-          click: () => {
-            window.webContents.toggleDevTools()
-          }
+  window.webContents.on('context-menu', () => {
+    createAppContextMenu({
+      includeRescan: true,
+      handlers: {
+        rescan: handlers.rescan,
+        checkForUpdates: handlers.checkForUpdates,
+        toggleDeveloperTools: () => {
+          window.webContents.toggleDevTools()
         }
-      ]).popup({ window })
-    })
-  }
+      }
+    }).popup({ window })
+  })
 
   return window
 }

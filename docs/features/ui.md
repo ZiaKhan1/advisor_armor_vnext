@@ -123,17 +123,21 @@ Scan elements (in order):
 
 ## Tray / Context Menu
 
-Right-click on tray icon:
+Right-click on tray icon or in the app window:
 
-- Show AdvisorArmor
 - Rescan
 - Check for Update
 - **Help** (submenu):
   - Email Support — opens `config.supportEmail`
   - Troubleshooting — opens `config.troubleshootingUrl`
   - App version (disabled label)
-  - Copy Debug Info — disabled in v1
-- Quit
+  - Copy Debug Info
+- Toggle Developer Tools
+- Quit AdvisorArmor
+
+`Check for Update` and `Copy Debug Info` are intentionally basic in the
+current implementation. Revisit both later to refine their UX, diagnostics, and
+support workflow behavior.
 
 ---
 
