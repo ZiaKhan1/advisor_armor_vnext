@@ -74,6 +74,19 @@ export interface WifiConnection {
   wpa3Result: PolicyStatus
 }
 
+export interface AutomaticUpdateCheck {
+  key: string
+  label: string
+  enabled: boolean | null
+}
+
+export interface AutomaticUpdatesSnapshot {
+  enabled: boolean | null
+  checks: AutomaticUpdateCheck[]
+  mojaveOrLater: boolean | null
+  tahoeOrLater: boolean | null
+}
+
 export type DiskEncryptionState =
   | 'enabled'
   | 'disabled'
@@ -94,6 +107,7 @@ export interface DeviceSnapshot {
   diskEncryptionEnabled: boolean | null
   diskEncryptionState: DiskEncryptionState
   automaticUpdatesEnabled: boolean | null
+  automaticUpdates: AutomaticUpdatesSnapshot
   remoteLoginEnabled: boolean | null
   winDefenderEnabled: boolean | null
   activeWifiSecure: boolean | null
@@ -135,6 +149,8 @@ export interface ScanElementDescriptionStep {
   linkUrl?: string
   action?: 'openFirewallSettings' | 'openDiskEncryptionSettings'
   suffix?: string
+  status?: PolicyStatus
+  children?: ScanElementDescriptionStep[]
 }
 
 export interface ScanResultData {

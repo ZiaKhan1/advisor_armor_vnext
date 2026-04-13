@@ -52,6 +52,38 @@ function createDevice(overrides: Partial<DeviceSnapshot> = {}): DeviceSnapshot {
     diskEncryptionEnabled: true,
     diskEncryptionState: 'enabled',
     automaticUpdatesEnabled: true,
+    automaticUpdates: {
+      enabled: true,
+      checks: [
+        {
+          key: 'automaticCheckEnabled',
+          label: 'Check for updates',
+          enabled: true
+        },
+        {
+          key: 'automaticDownloadUpdates',
+          label: 'Download new updates when available',
+          enabled: true
+        },
+        {
+          key: 'automaticOsUpdates',
+          label: 'Install macOS updates',
+          enabled: true
+        },
+        {
+          key: 'automaticAppUpdates',
+          label: 'Install application updates from the App Store',
+          enabled: true
+        },
+        {
+          key: 'automaticSecurityUpdates',
+          label: 'Install Security Responses and system files',
+          enabled: true
+        }
+      ],
+      mojaveOrLater: true,
+      tahoeOrLater: false
+    },
     remoteLoginEnabled: false,
     winDefenderEnabled: null,
     activeWifiSecure: true,
@@ -168,6 +200,175 @@ describe('evaluateDevice firewall result', () => {
       detail: 'Firewall status could not be determined.',
       fixInstruction:
         'Ensure the macOS firewall is turned on. Open System Settings > Network > Firewall and turn Firewall on if needed.'
+    })
+  })
+})
+
+describe('evaluateDevice automatic updates result', () => {
+  it('shows macOS checklist details when a required automatic update setting is disabled', () => {
+    const result = evaluateDevice(
+      createDevice({
+        automaticUpdatesEnabled: false,
+        automaticUpdates: {
+          enabled: false,
+          checks: [
+            {
+              key: 'automaticCheckEnabled',
+              label: 'Check for updates',
+              enabled: true
+            },
+            {
+              key: 'automaticDownloadUpdates',
+              label: 'Download new updates when available',
+              enabled: true
+            },
+            {
+              key: 'automaticOsUpdates',
+              label: 'Install macOS updates',
+              enabled: false
+            },
+            {
+              key: 'automaticAppUpdates',
+              label: 'Install application updates from the App Store',
+              enabled: true
+            },
+            {
+              key: 'automaticSecurityUpdates',
+              label: 'Install Security Responses and system files',
+              enabled: true
+            }
+          ],
+          mojaveOrLater: true,
+          tahoeOrLater: false
+        }
+      }),
+      createPolicy({ automaticUpdates: FAIL })
+    )
+
+    const automaticUpdates = result.elements.find(
+      (item) => item.key === 'automaticUpdates'
+    )
+
+    expect(result.automaticUpdates).toBe(FAIL)
+    expect(automaticUpdates).toMatchObject({
+      status: FAIL,
+      detail: 'One or more automatic update settings appear disabled.',
+      description:
+        'One of the most important things you can do to secure your device(s) is to keep your operating system and software up to date. New vulnerabilities and weaknesses are found every day so frequent updates are essential to ensuring your device(s) include the latest fixes and preventative measures. Enabling automatic updating helps ensure your machine is up-to-date without having to manually install updates.',
+      descriptionSteps: [
+        { text: 'Choose System Settings from the Apple menu.' },
+        {
+          text: 'Click ',
+          linkText: 'Software Update',
+          linkUrl:
+            'x-apple.systempreferences:com.apple.preferences.softwareupdate',
+          suffix: '.'
+        },
+        {
+          text: 'Click on the info icon in front of Automatic Updates and make sure the following are checked:',
+          children: [
+            { text: 'Check for updates', status: PASS },
+            {
+              text: 'Download new updates when available',
+              status: PASS
+            },
+            { text: 'Install macOS updates', status: FAIL },
+            {
+              text: 'Install application updates from the App Store',
+              status: PASS
+            },
+            {
+              text: 'Install Security Responses and system files',
+              status: PASS
+            }
+          ]
+        }
+      ],
+      fixInstruction:
+        'Open Software Update settings and turn on automatic updates.'
+    })
+  })
+
+  it('does not penalize the user when automatic update settings cannot be determined', () => {
+    const result = evaluateDevice(
+      createDevice({
+        automaticUpdatesEnabled: null,
+        automaticUpdates: {
+          enabled: null,
+          checks: [
+            {
+              key: 'automaticCheckEnabled',
+              label: 'Check for updates',
+              enabled: true
+            },
+            {
+              key: 'automaticDownloadUpdates',
+              label: 'Download new updates when available',
+              enabled: null
+            }
+          ],
+          mojaveOrLater: true,
+          tahoeOrLater: false
+        }
+      }),
+      createPolicy({ automaticUpdates: FAIL })
+    )
+
+    const automaticUpdates = result.elements.find(
+      (item) => item.key === 'automaticUpdates'
+    )
+
+    expect(result.automaticUpdates).toBe(PASS)
+    expect(automaticUpdates).toMatchObject({
+      status: PASS,
+      detail: 'Automatic update settings could not be fully verified.',
+      fixInstruction: 'No action required.'
+    })
+  })
+
+  it('uses Windows Resume updates instructions when updates are paused', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: true,
+        automaticUpdatesEnabled: false,
+        automaticUpdates: {
+          enabled: false,
+          checks: [
+            {
+              key: 'windowsUpdatesNotPaused',
+              label: 'Windows updates are not paused',
+              enabled: false
+            }
+          ],
+          mojaveOrLater: null,
+          tahoeOrLater: null
+        }
+      }),
+      createPolicy({ automaticUpdates: FAIL })
+    )
+
+    const automaticUpdates = result.elements.find(
+      (item) => item.key === 'automaticUpdates'
+    )
+
+    expect(result.automaticUpdates).toBe(FAIL)
+    expect(automaticUpdates).toMatchObject({
+      status: FAIL,
+      detail: 'Windows updates appear to be paused.',
+      descriptionSteps: [
+        {
+          text: 'Open ',
+          linkText: 'Windows Update',
+          linkUrl: 'ms-settings:windowsupdate',
+          suffix: ' settings.'
+        },
+        {
+          text: 'Click on the "Resume updates" button to enable automatic updates.'
+        }
+      ],
+      fixInstruction: 'Open Windows Update settings and click Resume updates.'
     })
   })
 })
