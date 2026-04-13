@@ -381,8 +381,7 @@ export class AppController extends EventEmitter {
       )
     } catch (error) {
       logger.error('Start scan flow failed', error)
-      const genericMessage =
-        `${config.displayName} needs an internet connection to run a scan.`
+      const genericMessage = `${config.displayName} needs an internet connection to run a scan.`
       if (isBackendError(error)) {
         logger.error('Backend failure classification', {
           type: error.type,

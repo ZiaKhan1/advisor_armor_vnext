@@ -10,8 +10,7 @@ app.setName(config.productName)
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock()
 const controller = new AppController()
-const duplicateInstanceMessage =
-  `Another ${config.displayName} instance is already running; exiting duplicate process.`
+const duplicateInstanceMessage = `Another ${config.displayName} instance is already running; exiting duplicate process.`
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 
@@ -72,7 +71,9 @@ if (!hasSingleInstanceLock) {
   app.quit()
 } else {
   app.on('second-instance', () => {
-    logger.info('Second application instance requested; focusing existing window')
+    logger.info(
+      'Second application instance requested; focusing existing window'
+    )
     showMainWindow()
   })
 
