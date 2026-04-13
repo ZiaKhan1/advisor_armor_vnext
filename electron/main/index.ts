@@ -12,7 +12,7 @@ const hasSingleInstanceLock = app.requestSingleInstanceLock()
 const controller = new AppController()
 const duplicateInstanceMessage = `Another ${config.displayName} instance is already running; exiting duplicate process.`
 let mainWindow: BrowserWindow | null = null
-let tray: Tray | null = null
+const retainedElectronObjects: { tray: Tray | null } = { tray: null }
 
 function showMainWindow(): void {
   if (!mainWindow) {
@@ -49,7 +49,7 @@ async function bootstrap(): Promise<void> {
     await mainWindow.loadFile('out/renderer/index.html')
   }
 
-  tray = createTray({
+  retainedElectronObjects.tray = createTray({
     showMainWindow,
     rescan: () => {
       void controller.rescan()
