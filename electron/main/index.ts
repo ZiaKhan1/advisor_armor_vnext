@@ -11,7 +11,7 @@ app.setName(config.productName)
 const hasSingleInstanceLock = app.requestSingleInstanceLock()
 const controller = new AppController()
 const duplicateInstanceMessage =
-  'Another AdvisorArmor instance is already running; exiting duplicate process.'
+  `Another ${config.displayName} instance is already running; exiting duplicate process.`
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 

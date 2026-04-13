@@ -1,6 +1,6 @@
-# Advisor Armor DeviceWatch
+# Advisor Armor
 
-Electron desktop client for AdvisorArmor / DeviceWatch.
+Electron desktop client for Advisor Armor / DeviceWatch.
 
 ## Scripts
 
@@ -28,6 +28,9 @@ For macOS distribution, build and publish the universal artifact with `npm run d
 The app uses `electron-log` from the Electron main process. File logs use the
 default Electron/electron-log per-app location for the app name
 `AdvisorArmor`.
+
+`Advisor Armor` is the user-facing display name. `AdvisorArmor` remains the
+runtime app identity used for packaged app metadata and OS storage/log paths.
 
 ### macOS
 

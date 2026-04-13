@@ -1,7 +1,7 @@
 {
   "name": "advisorarmor",
   "version": "4.0.0",
-  "description": "AdvisorArmor Electron desktop client",
+  "description": "Advisor Armor Electron desktop client",
   "main": "./out/main/index.js",
   "author": "OpenAI Codex",
   "license": "UNLICENSED",

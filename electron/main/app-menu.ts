@@ -60,7 +60,7 @@ export function createAppContextMenu({
       click: handlers.toggleDeveloperTools
     },
     {
-      label: `Quit ${config.productName}`,
+      label: `Quit ${config.displayName}`,
       accelerator: 'CommandOrControl+Q',
       click: () => app.quit()
     }

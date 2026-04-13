@@ -133,7 +133,7 @@ Right-click on tray icon or in the app window:
   - App version (disabled label)
   - Copy Debug Info
 - Toggle Developer Tools
-- Quit AdvisorArmor
+- Quit Advisor Armor
 
 `Check for Update` and `Copy Debug Info` are intentionally basic in the
 current implementation. Revisit both later to refine their UX, diagnostics, and
