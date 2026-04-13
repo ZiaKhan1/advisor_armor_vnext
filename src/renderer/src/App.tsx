@@ -523,7 +523,11 @@ function DescriptionStep({
                 void window.deviceWatch.openFirewallSettings()
                 return
               }
-              void window.deviceWatch.openDiskEncryptionSettings()
+              if (step.action === 'openDiskEncryptionSettings') {
+                void window.deviceWatch.openDiskEncryptionSettings()
+                return
+              }
+              void window.deviceWatch.openAppStore()
             }}
           >
             {step.linkText}

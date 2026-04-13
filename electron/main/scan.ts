@@ -532,7 +532,12 @@ function getAutomaticUpdatesDescriptionSteps(
       )
 
       steps.push(
-        { text: 'Open App Store.' },
+        {
+          text: 'Open ',
+          linkText: 'App Store',
+          action: 'openAppStore',
+          suffix: '.'
+        },
         {
           text: 'Click on the App Store menu at the top and then click Settings.'
         },

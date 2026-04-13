@@ -355,6 +355,53 @@ describe('evaluateDevice automatic updates result', () => {
     })
   })
 
+  it('adds App Store action steps for Tahoe automatic app updates', () => {
+    const result = evaluateDevice(
+      createDevice({
+        automaticUpdatesEnabled: false,
+        automaticUpdates: {
+          enabled: false,
+          checks: [
+            {
+              key: 'automaticDownloadUpdates',
+              label: 'Download new updates when available',
+              enabled: true
+            },
+            {
+              key: 'automaticOsUpdates',
+              label: 'Install macOS updates',
+              enabled: true
+            },
+            {
+              key: 'automaticAppUpdates',
+              label: 'Install application updates from the App Store',
+              enabled: false
+            },
+            {
+              key: 'automaticSecurityUpdates',
+              label: 'Install Security Responses and system files',
+              enabled: true
+            }
+          ],
+          mojaveOrLater: true,
+          tahoeOrLater: true
+        }
+      }),
+      createPolicy({ automaticUpdates: FAIL })
+    )
+
+    const automaticUpdates = result.elements.find(
+      (item) => item.key === 'automaticUpdates'
+    )
+
+    expect(automaticUpdates?.descriptionSteps).toContainEqual({
+      text: 'Open ',
+      linkText: 'App Store',
+      action: 'openAppStore',
+      suffix: '.'
+    })
+  })
+
   it('uses Windows Resume updates instructions when updates are paused', () => {
     const result = evaluateDevice(
       createDevice({

@@ -289,6 +289,17 @@ export class AppController extends EventEmitter {
     )
   }
 
+  async openAppStore(): Promise<void> {
+    if (process.platform === 'darwin') {
+      await shell.openExternal('macappstore://')
+      return
+    }
+
+    logger.warn('Opening App Store is not supported on this platform', {
+      platform: process.platform
+    })
+  }
+
   async checkForUpdates(): Promise<void> {
     await this.updateService.checkForUpdates()
   }

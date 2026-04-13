@@ -147,7 +147,10 @@ export interface ScanElementDescriptionStep {
   text: string
   linkText?: string
   linkUrl?: string
-  action?: 'openFirewallSettings' | 'openDiskEncryptionSettings'
+  action?:
+    | 'openFirewallSettings'
+    | 'openDiskEncryptionSettings'
+    | 'openAppStore'
   suffix?: string
   status?: PolicyStatus
   children?: ScanElementDescriptionStep[]

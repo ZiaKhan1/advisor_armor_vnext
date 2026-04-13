@@ -31,4 +31,5 @@ export function registerIpc(controller: AppController): void {
   ipcMain.handle(ipcChannels.openDiskEncryptionSettings, () =>
     controller.openDiskEncryptionSettings()
   )
+  ipcMain.handle(ipcChannels.openAppStore, () => controller.openAppStore())
 }
