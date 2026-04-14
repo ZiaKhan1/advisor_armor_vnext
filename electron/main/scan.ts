@@ -15,6 +15,7 @@ import {
 } from './scan-checks/disk-encryption'
 import { readAutomaticUpdates } from './scan-checks/automatic-updates'
 import { readFirewallEnabled } from './scan-checks/firewall'
+import { readRemoteLoginEnabled } from './scan-checks/remote-login'
 
 const FIREWALL_DESCRIPTION =
   'Firewalls control network traffic into and out of a system. Enabling the firewall on your device can prevent network-based attacks on your system and is especially important if you make use of unsecured wireless networks (such as at coffee shops and airports).'
@@ -22,6 +23,8 @@ const DISK_ENCRYPTION_DESCRIPTION =
   "Full-disk encryption protects data at rest from being accessed by a party who does not know the password or decryption key. Systems containing internal data should be encrypted. It is every employee's responsibility to keep internal data safe."
 const AUTOMATIC_UPDATES_DESCRIPTION =
   'One of the most important things you can do to secure your device(s) is to keep your operating system and software up to date. New vulnerabilities and weaknesses are found every day so frequent updates are essential to ensuring your device(s) include the latest fixes and preventative measures. Enabling automatic updating helps ensure your machine is up-to-date without having to manually install updates.'
+const REMOTE_LOGIN_DESCRIPTION =
+  "The 'Remote Login' setting on your device controls whether users can login remotely to the system."
 
 async function resolvePublicIp(): Promise<string> {
   for (const url of [
@@ -47,6 +50,7 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
   const diskEncryptionState = await readDiskEncryptionState(currentPlatform)
   const diskEncryptionEnabled = isDiskEncryptionOk(diskEncryptionState)
   const automaticUpdates = await readAutomaticUpdates(currentPlatform)
+  const remoteLoginEnabled = await readRemoteLoginEnabled(currentPlatform)
 
   const wifiConnections: WifiConnection[] = [
     {
@@ -81,7 +85,7 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
     // Remaining provisional bottom-layer values are acceptable in v1 scaffolding.
     automaticUpdates,
     automaticUpdatesEnabled: automaticUpdates.enabled,
-    remoteLoginEnabled: false,
+    remoteLoginEnabled,
     winDefenderEnabled: currentPlatform === 'win32' ? true : null,
     activeWifiSecure: true,
     knownWifiSecure: true,
@@ -168,7 +172,9 @@ export function evaluateDevice(
   )
   const remoteLogin = evaluateBoolean(
     isMac ? policy.remoteLogin.mac : policy.remoteLogin.win,
-    device.remoteLoginEnabled === false
+    device.remoteLoginEnabled == null
+      ? null
+      : device.remoteLoginEnabled === false
   )
   const winDefenderAV =
     device.platform === 'win32'
@@ -308,10 +314,10 @@ export function evaluateDevice(
       'remoteLogin',
       'Remote Login',
       remoteLogin,
-      device.remoteLoginEnabled
-        ? 'Remote login appears enabled.'
-        : 'Remote login appears disabled.',
-      'Disable remote login unless explicitly required.'
+      describeRemoteLoginState(device),
+      recommendRemoteLoginAction(device.platform, device.remoteLoginEnabled),
+      REMOTE_LOGIN_DESCRIPTION,
+      getRemoteLoginDescriptionSteps(device.platform)
     ),
     buildElement(
       'activeWifiNetwork',
@@ -591,6 +597,47 @@ function getAutomaticUpdatesDescriptionSteps(
   ]
 }
 
+function getRemoteLoginDescriptionSteps(
+  currentPlatform: string
+): ScanElementDescriptionStep[] {
+  if (currentPlatform === 'darwin') {
+    return [
+      { text: 'Choose System Settings from the Apple menu.' },
+      {
+        text: 'Click ',
+        linkText: 'Sharing',
+        linkUrl:
+          'x-apple.systempreferences:com.apple.preferences.sharing?Services_RemoteLogin',
+        suffix: '.'
+      },
+      { text: 'Uncheck "Remote Login".' }
+    ]
+  }
+
+  if (currentPlatform === 'win32') {
+    return [
+      {
+        text: 'Open ',
+        linkText: 'System Properties',
+        action: 'openRemoteLoginSettings',
+        suffix: ' and select the Remote tab.',
+        note: 'If the link does not open System Properties, press Windows + R, enter SystemPropertiesRemote.exe, and press Enter.'
+      },
+      {
+        text: 'Under the "Remote Desktop" section, select "Don\'t allow remote connections to this computer".'
+      },
+      { text: 'Click Apply.' },
+      { text: 'Click OK.' }
+    ]
+  }
+
+  return [
+    {
+      text: 'Open device sharing settings and disable remote login.'
+    }
+  ]
+}
+
 function describeAppState(
   prohibitedApps: string[],
   missingCategories: string[]
@@ -706,6 +753,16 @@ function describeAutomaticUpdatesState(device: DeviceSnapshot): string {
     : 'One or more automatic update settings appear disabled.'
 }
 
+function describeRemoteLoginState(device: DeviceSnapshot): string {
+  if (device.remoteLoginEnabled == null) {
+    return 'Remote login status could not be determined.'
+  }
+
+  return device.remoteLoginEnabled
+    ? 'Remote login appears enabled.'
+    : 'Remote login appears disabled.'
+}
+
 function recommendDiskEncryptionAction(
   currentPlatform: string,
   state: DeviceSnapshot['diskEncryptionState']
@@ -762,6 +819,29 @@ function recommendAutomaticUpdatesAction(
   }
 
   return 'Turn on automatic operating system updates.'
+}
+
+function recommendRemoteLoginAction(
+  currentPlatform: string,
+  enabled: boolean | null
+): string {
+  if (enabled === false) {
+    return 'No action required.'
+  }
+
+  if (enabled == null) {
+    return 'Disable remote login unless explicitly required.'
+  }
+
+  if (currentPlatform === 'darwin') {
+    return 'Open System Settings > Sharing and turn Remote Login off.'
+  }
+
+  if (currentPlatform === 'win32') {
+    return 'Open Advanced System Preferences and disable Remote Desktop connections.'
+  }
+
+  return 'Disable remote login unless explicitly required.'
 }
 
 function automaticUpdateCheckStatus(enabled: boolean | null): PolicyStatus {

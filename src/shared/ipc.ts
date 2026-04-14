@@ -21,6 +21,7 @@ export interface DeviceWatchApi {
   openFirewallSettings: () => Promise<void>
   openDiskEncryptionSettings: () => Promise<void>
   openAppStore: () => Promise<void>
+  openRemoteLoginSettings: () => Promise<void>
 }
 
 export const ipcChannels = {
@@ -35,5 +36,6 @@ export const ipcChannels = {
   openFirewallSettings: 'system:open-firewall-settings',
   openDiskEncryptionSettings: 'system:open-disk-encryption-settings',
   openAppStore: 'system:open-app-store',
+  openRemoteLoginSettings: 'system:open-remote-login-settings',
   stateChanged: 'app:state-changed'
 } as const

@@ -151,7 +151,9 @@ export interface ScanElementDescriptionStep {
     | 'openFirewallSettings'
     | 'openDiskEncryptionSettings'
     | 'openAppStore'
+    | 'openRemoteLoginSettings'
   suffix?: string
+  note?: string
   status?: PolicyStatus
   children?: ScanElementDescriptionStep[]
 }

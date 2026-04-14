@@ -449,6 +449,120 @@ describe('evaluateDevice automatic updates result', () => {
   })
 })
 
+describe('evaluateDevice remote login result', () => {
+  it('uses macOS Remote Login instructions when remote login is enabled', () => {
+    const result = evaluateDevice(
+      createDevice({
+        remoteLoginEnabled: true
+      }),
+      createPolicy({ remoteLogin: { mac: FAIL, win: FAIL } })
+    )
+
+    const remoteLogin = result.elements.find(
+      (item) => item.key === 'remoteLogin'
+    )
+
+    expect(result.remoteLogin).toBe(FAIL)
+    expect(remoteLogin).toMatchObject({
+      status: FAIL,
+      detail: 'Remote login appears enabled.',
+      description:
+        "The 'Remote Login' setting on your device controls whether users can login remotely to the system.",
+      descriptionSteps: [
+        { text: 'Choose System Settings from the Apple menu.' },
+        {
+          text: 'Click ',
+          linkText: 'Sharing',
+          linkUrl:
+            'x-apple.systempreferences:com.apple.preferences.sharing?Services_RemoteLogin',
+          suffix: '.'
+        },
+        { text: 'Uncheck "Remote Login".' }
+      ],
+      fixInstruction:
+        'Open System Settings > Sharing and turn Remote Login off.'
+    })
+  })
+
+  it('passes when remote login is disabled', () => {
+    const result = evaluateDevice(
+      createDevice({
+        remoteLoginEnabled: false
+      }),
+      createPolicy({ remoteLogin: { mac: FAIL, win: FAIL } })
+    )
+
+    const remoteLogin = result.elements.find(
+      (item) => item.key === 'remoteLogin'
+    )
+
+    expect(result.remoteLogin).toBe(PASS)
+    expect(remoteLogin).toMatchObject({
+      status: PASS,
+      detail: 'Remote login appears disabled.',
+      fixInstruction: 'No action required.'
+    })
+  })
+
+  it('does not penalize the user when remote login cannot be determined', () => {
+    const result = evaluateDevice(
+      createDevice({
+        remoteLoginEnabled: null
+      }),
+      createPolicy({ remoteLogin: { mac: FAIL, win: FAIL } })
+    )
+
+    const remoteLogin = result.elements.find(
+      (item) => item.key === 'remoteLogin'
+    )
+
+    expect(result.remoteLogin).toBe(PASS)
+    expect(remoteLogin).toMatchObject({
+      status: PASS,
+      detail: 'Remote login status could not be determined.',
+      fixInstruction: 'Disable remote login unless explicitly required.'
+    })
+  })
+
+  it('uses Windows Remote Desktop instructions when remote login is enabled', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: true,
+        remoteLoginEnabled: true
+      }),
+      createPolicy({ remoteLogin: { mac: FAIL, win: FAIL } })
+    )
+
+    const remoteLogin = result.elements.find(
+      (item) => item.key === 'remoteLogin'
+    )
+
+    expect(result.remoteLogin).toBe(FAIL)
+    expect(remoteLogin).toMatchObject({
+      status: FAIL,
+      detail: 'Remote login appears enabled.',
+      descriptionSteps: [
+        {
+          text: 'Open ',
+          linkText: 'System Properties',
+          action: 'openRemoteLoginSettings',
+          suffix: ' and select the Remote tab.',
+          note: 'If the link does not open System Properties, press Windows + R, enter SystemPropertiesRemote.exe, and press Enter.'
+        },
+        {
+          text: 'Under the "Remote Desktop" section, select "Don\'t allow remote connections to this computer".'
+        },
+        { text: 'Click Apply.' },
+        { text: 'Click OK.' }
+      ],
+      fixInstruction:
+        'Open Advanced System Preferences and disable Remote Desktop connections.'
+    })
+  })
+})
+
 describe('evaluateDevice disk encryption result', () => {
   it('uses macOS FileVault instructions when disk encryption is disabled', () => {
     const result = evaluateDevice(
