@@ -306,10 +306,17 @@ export class AppController extends EventEmitter {
 
   async openRemoteLoginSettings(): Promise<void> {
     if (process.platform === 'win32') {
-      const child = spawn('SystemPropertiesRemote.exe', [], {
-        detached: true,
-        stdio: 'ignore',
-        windowsHide: true
+      const child = spawn(
+        'cmd.exe',
+        ['/c', 'start', '', 'SystemPropertiesRemote.exe'],
+        {
+          detached: true,
+          stdio: 'ignore',
+          windowsHide: true
+        }
+      )
+      child.on('error', (error) => {
+        logger.error('Opening remote login settings failed', error)
       })
       child.unref()
       return

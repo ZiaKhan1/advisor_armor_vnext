@@ -549,7 +549,7 @@ describe('evaluateDevice remote login result', () => {
           linkText: 'System Properties',
           action: 'openRemoteLoginSettings',
           suffix: ' and select the Remote tab.',
-          note: 'If the link does not open System Properties, press Windows + R, enter SystemPropertiesRemote.exe, and press Enter.'
+          note: 'Note: If the link does not open System Properties, press Windows + R, enter SystemPropertiesRemote.exe, and press Enter.'
         },
         {
           text: 'Under the "Remote Desktop" section, select "Don\'t allow remote connections to this computer".'
