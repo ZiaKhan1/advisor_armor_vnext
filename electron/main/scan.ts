@@ -311,6 +311,7 @@ export function evaluateDevice(
       'Screen Idle',
       screenIdle,
       describeScreenIdleState(
+        device.platform,
         device.screenIdleState,
         isMac ? policy.screenIdle.mac : policy.screenIdle.win
       ),
@@ -678,7 +679,9 @@ function getScreenIdleDescriptionSteps(
   policySeconds: number | null
 ): ScanElementDescriptionStep[] {
   const policyLabel =
-    policySeconds == null ? 'N/A' : formatDuration(policySeconds)
+    policySeconds == null
+      ? 'N/A'
+      : formatScreenIdleDuration(currentPlatform, policySeconds)
 
   if (currentPlatform === 'darwin') {
     return [
@@ -845,29 +848,36 @@ function describeRemoteLoginState(device: DeviceSnapshot): string {
 }
 
 function describeScreenIdleState(
+  currentPlatform: string,
   idleState: ScreenIdleState,
   policySeconds: number | null
 ): string {
   if (policySeconds == null) {
-    return `Company policy: N/A. Your setting: ${formatScreenIdleState(idleState)}.`
+    return `Company policy: N/A. Your setting: ${formatScreenIdleState(currentPlatform, idleState)}.`
   }
 
   if (idleState.kind === 'unknown') {
     return 'Screen idle setting could not be determined.'
   }
 
-  const policyLabel = formatDuration(policySeconds)
+  const policyLabel = formatScreenIdleDuration(currentPlatform, policySeconds)
 
   if (idleState.kind === 'never') {
     return `Company policy: ${policyLabel}. Your setting: Never.`
   }
 
-  return `Company policy: ${policyLabel}. Your setting: ${formatDuration(idleState.seconds)}.`
+  return `Company policy: ${policyLabel}. Your setting: ${formatScreenIdleDuration(
+    currentPlatform,
+    idleState.seconds
+  )}.`
 }
 
-function formatScreenIdleState(idleState: ScreenIdleState): string {
+function formatScreenIdleState(
+  currentPlatform: string,
+  idleState: ScreenIdleState
+): string {
   if (idleState.kind === 'seconds') {
-    return formatDuration(idleState.seconds)
+    return formatScreenIdleDuration(currentPlatform, idleState.seconds)
   }
 
   if (idleState.kind === 'never') {
@@ -1026,19 +1036,58 @@ function recommendFirewallAction(
   return 'Enable the system firewall in device settings.'
 }
 
-function formatDuration(seconds: number): string {
-  if (seconds < 60) {
-    return `${seconds} ${seconds === 1 ? 'second' : 'seconds'}`
+function formatScreenIdleDuration(
+  currentPlatform: string,
+  seconds: number
+): string {
+  if (currentPlatform === 'win32') {
+    return formatMinutesSeconds(seconds)
   }
 
-  if (seconds % 60 === 0) {
-    const minutes = seconds / 60
-    return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`
+  return formatHoursMinutesSeconds(seconds)
+}
+
+function formatHoursMinutesSeconds(totalSeconds: number): string {
+  if (!Number.isInteger(totalSeconds) || totalSeconds < 0) {
+    return 'N/A'
   }
 
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = seconds % 60
-  return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ${remainingSeconds} ${
-    remainingSeconds === 1 ? 'second' : 'seconds'
-  }`
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  const parts: string[] = []
+
+  if (hours > 0) {
+    parts.push(`${hours} ${hours === 1 ? 'hour' : 'hours'}`)
+  }
+
+  if (minutes > 0) {
+    parts.push(`${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`)
+  }
+
+  if (seconds > 0 || parts.length === 0) {
+    parts.push(`${seconds} ${seconds === 1 ? 'second' : 'seconds'}`)
+  }
+
+  return parts.join(' ')
+}
+
+function formatMinutesSeconds(totalSeconds: number): string {
+  if (!Number.isInteger(totalSeconds) || totalSeconds < 0) {
+    return 'N/A'
+  }
+
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  const parts: string[] = []
+
+  if (minutes > 0) {
+    parts.push(`${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`)
+  }
+
+  if (seconds > 0 || parts.length === 0) {
+    parts.push(`${seconds} ${seconds === 1 ? 'second' : 'seconds'}`)
+  }
+
+  return parts.join(' ')
 }

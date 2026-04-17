@@ -334,6 +334,50 @@ describe('evaluateDevice screen idle result', () => {
       ]
     })
   })
+
+  it('formats Windows Screen Idle values as minutes and seconds', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: true,
+        screenIdleState: { kind: 'seconds', seconds: 3900 }
+      }),
+      createPolicy({ screenIdle: { mac: null, win: 3900 } })
+    )
+
+    const screenIdle = result.elements.find((item) => item.key === 'screenIdle')
+
+    expect(result.screenIdle).toBe(PASS)
+    expect(screenIdle).toMatchObject({
+      detail: 'Company policy: 65 minutes. Your setting: 65 minutes.',
+      descriptionSteps: [
+        { text: 'Open Screen Saver Settings.' },
+        {
+          text: 'Set the wait time to less than or equal to the company policy (65 minutes).'
+        }
+      ]
+    })
+  })
+
+  it('formats Windows disabled Screen Idle as never', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: true,
+        screenIdleState: { kind: 'never' }
+      }),
+      createPolicy({ screenIdle: { mac: null, win: 600 } })
+    )
+
+    const screenIdle = result.elements.find((item) => item.key === 'screenIdle')
+
+    expect(result.screenIdle).toBe(FAIL)
+    expect(screenIdle).toMatchObject({
+      detail: 'Company policy: 10 minutes. Your setting: Never.'
+    })
+  })
 })
 
 describe('evaluateDevice automatic updates result', () => {
