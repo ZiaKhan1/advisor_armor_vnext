@@ -451,6 +451,13 @@ describe('evaluateDevice screen lock result', () => {
       detail: 'Company policy: Immediately. Your setting: Immediately.'
     },
     {
+      name: 'passes when macOS policy allows a delay and device is immediately',
+      policyValue: 300,
+      deviceValue: { kind: 'immediately' as const },
+      expected: PASS,
+      detail: 'Company policy: 5 minutes. Your setting: Immediately.'
+    },
+    {
       name: 'fails when macOS policy requires immediately and device has a delay',
       policyValue: 0,
       deviceValue: { kind: 'seconds' as const, seconds: 5 },
@@ -579,6 +586,22 @@ describe('evaluateDevice screen lock result', () => {
       expected: PASS,
       detail:
         'Company policy: Logon screen not required on resume. Your setting: Logon screen not required on resume.'
+    },
+    {
+      name: 'passes when Windows policy does not require logon and setting is required',
+      policyValue: 0,
+      deviceValue: { kind: 'required' as const },
+      expected: PASS,
+      detail:
+        'Company policy: Logon screen not required on resume. Your setting: Logon screen required on resume.'
+    },
+    {
+      name: 'passes when Windows policy requires logon and setting is unknown',
+      policyValue: 1,
+      deviceValue: { kind: 'unknown' as const },
+      expected: PASS,
+      detail:
+        'Company policy: Logon screen required on resume. Your setting: Unknown.'
     },
     {
       name: 'passes when Windows policy is not configured',
