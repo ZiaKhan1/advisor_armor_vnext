@@ -19,7 +19,8 @@ const scanCheckMocks = vi.hoisted(() => ({
   readFirewallEnabled: vi.fn(),
   readDiskEncryptionState: vi.fn(),
   readAutomaticUpdates: vi.fn(),
-  readRemoteLoginEnabled: vi.fn()
+  readRemoteLoginEnabled: vi.fn(),
+  readScreenIdle: vi.fn()
 }))
 
 vi.mock('node:os', () => osMocks)
@@ -57,6 +58,10 @@ vi.mock('./scan-checks/remote-login', () => ({
   readRemoteLoginEnabled: scanCheckMocks.readRemoteLoginEnabled
 }))
 
+vi.mock('./scan-checks/screen-security', () => ({
+  readScreenIdle: scanCheckMocks.readScreenIdle
+}))
+
 const automaticUpdates: AutomaticUpdatesSnapshot = {
   enabled: false,
   checks: [
@@ -78,6 +83,10 @@ describe('readDeviceSnapshot', () => {
     scanCheckMocks.readDiskEncryptionState.mockResolvedValue('enabled')
     scanCheckMocks.readAutomaticUpdates.mockResolvedValue(automaticUpdates)
     scanCheckMocks.readRemoteLoginEnabled.mockResolvedValue(true)
+    scanCheckMocks.readScreenIdle.mockResolvedValue({
+      kind: 'seconds',
+      seconds: 300
+    })
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -98,6 +107,7 @@ describe('readDeviceSnapshot', () => {
     )
     expect(scanCheckMocks.readAutomaticUpdates).toHaveBeenCalledWith('darwin')
     expect(scanCheckMocks.readRemoteLoginEnabled).toHaveBeenCalledWith('darwin')
+    expect(scanCheckMocks.readScreenIdle).toHaveBeenCalledWith('darwin')
 
     expect(snapshot).toMatchObject({
       deviceName: 'test-host',
@@ -111,6 +121,8 @@ describe('readDeviceSnapshot', () => {
       automaticUpdates,
       automaticUpdatesEnabled: false,
       remoteLoginEnabled: true,
+      screenIdleState: { kind: 'seconds', seconds: 300 },
+      screenIdleSeconds: 300,
       networkIdInUse: '203.0.113.10'
     })
   })

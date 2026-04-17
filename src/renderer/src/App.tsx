@@ -478,7 +478,8 @@ function ScanRow({
           {item.key === 'firewall' ||
           item.key === 'diskEncryption' ||
           item.key === 'automaticUpdates' ||
-          item.key === 'remoteLogin' ? null : (
+          item.key === 'remoteLogin' ||
+          item.key === 'screenIdle' ? null : (
             <>
               <p className="mt-2 font-medium text-slate-800">
                 Recommended action
@@ -546,11 +547,11 @@ function DescriptionStep({
         </ul>
       ) : null}
       {step.children && step.children.length > 0 ? (
-        <ol className="mt-2 list-decimal space-y-2 pl-5">
+        <ul className="mt-2 list-disc space-y-2 pl-5">
           {step.children.map((child, index) => (
             <DescriptionStep key={`${child.text}-${index}`} step={child} />
           ))}
-        </ol>
+        </ul>
       ) : null}
     </li>
   )

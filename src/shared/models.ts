@@ -87,6 +87,11 @@ export interface AutomaticUpdatesSnapshot {
   tahoeOrLater: boolean | null
 }
 
+export type ScreenIdleState =
+  | { kind: 'seconds'; seconds: number }
+  | { kind: 'never' }
+  | { kind: 'unknown' }
+
 export type DiskEncryptionState =
   | 'enabled'
   | 'disabled'
@@ -115,6 +120,7 @@ export interface DeviceSnapshot {
   networkIdInUse: string
   installedApps: string[]
   wifiConnections: WifiConnection[]
+  screenIdleState: ScreenIdleState
   screenIdleSeconds: number | null
   screenLockSeconds: number | null
 }

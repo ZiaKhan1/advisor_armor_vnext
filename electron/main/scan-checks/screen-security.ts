@@ -1,0 +1,60 @@
+import { platform } from 'node:os'
+import type { ScreenIdleState } from '@shared/models'
+import { runCommand } from '../command-runner'
+import { logger } from '../logging'
+
+const SCREEN_SECURITY_COMMAND_TIMEOUT_MS = 10_000
+
+export async function readScreenIdle(
+  currentPlatform = platform()
+): Promise<ScreenIdleState> {
+  if (currentPlatform === 'darwin') {
+    return readMacScreenIdle()
+  }
+
+  return { kind: 'unknown' }
+}
+
+export function parseMacScreenIdleState(output: string): ScreenIdleState {
+  const trimmed = output.trim()
+
+  if (!trimmed) {
+    return { kind: 'unknown' }
+  }
+
+  const seconds = Number.parseInt(trimmed, 10)
+  if (Number.isNaN(seconds) || String(seconds) !== trimmed) {
+    return { kind: 'unknown' }
+  }
+
+  if (seconds === 0) {
+    return { kind: 'never' }
+  }
+
+  if (seconds > 0) {
+    return { kind: 'seconds', seconds }
+  }
+
+  return { kind: 'unknown' }
+}
+
+async function readMacScreenIdle(): Promise<ScreenIdleState> {
+  const result = await runCommand(
+    'defaults',
+    ['-currentHost', 'read', 'com.apple.screensaver', 'idleTime'],
+    SCREEN_SECURITY_COMMAND_TIMEOUT_MS
+  )
+
+  if (!result.ok) {
+    return { kind: 'unknown' }
+  }
+
+  const state = parseMacScreenIdleState(result.stdout)
+  if (state.kind === 'unknown') {
+    logger.warn('Unable to parse macOS screen idle state', {
+      stdout: result.stdout
+    })
+  }
+
+  return state
+}

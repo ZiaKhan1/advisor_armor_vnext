@@ -44,4 +44,27 @@ describe('parsePolicyResponse', () => {
     expect(parsed.scanIntervalHours).toBe(12)
     expect(parsed.appsPolicy.prohibitedApps).toEqual(['ChatGPT'])
   })
+
+  it('normalizes macOS screen idle policy thresholds', () => {
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenIdleMac: 300 } }, true)
+        .screenIdle.mac
+    ).toBe(300)
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenIdleMac: '300' } }, true)
+        .screenIdle.mac
+    ).toBe(300)
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenIdleMac: 0 } }, true)
+        .screenIdle.mac
+    ).toBeNull()
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenIdleMac: -1 } }, true)
+        .screenIdle.mac
+    ).toBeNull()
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenIdleMac: 'abc' } }, true)
+        .screenIdle.mac
+    ).toBeNull()
+  })
 })

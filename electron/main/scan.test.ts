@@ -86,6 +86,7 @@ function createDevice(overrides: Partial<DeviceSnapshot> = {}): DeviceSnapshot {
     networkIdInUse: '',
     installedApps: [],
     wifiConnections: [],
+    screenIdleState: { kind: 'unknown' },
     screenIdleSeconds: null,
     screenLockSeconds: null,
     ...overrides
@@ -195,6 +196,142 @@ describe('evaluateDevice firewall result', () => {
       detail: 'Firewall status could not be determined.',
       fixInstruction:
         'Ensure the macOS firewall is turned on. Open System Settings > Network > Firewall and turn Firewall on if needed.'
+    })
+  })
+})
+
+describe('evaluateDevice screen idle result', () => {
+  it.each([
+    {
+      name: 'passes when policy is not configured',
+      policyValue: null,
+      deviceValue: { kind: 'seconds' as const, seconds: 600 },
+      expected: PASS,
+      detail: 'Company policy: N/A. Your setting: 10 minutes.'
+    },
+    {
+      name: 'passes when policy is not configured and screen saver is set to never',
+      policyValue: null,
+      deviceValue: { kind: 'never' as const },
+      expected: PASS,
+      detail: 'Company policy: N/A. Your setting: Never.'
+    },
+    {
+      name: 'passes when policy is not configured and device setting is unknown',
+      policyValue: null,
+      deviceValue: { kind: 'unknown' as const },
+      expected: PASS,
+      detail: 'Company policy: N/A. Your setting: Unknown.'
+    },
+    {
+      name: 'passes when device setting is unknown',
+      policyValue: 300,
+      deviceValue: { kind: 'unknown' as const },
+      expected: PASS,
+      detail: 'Screen idle setting could not be determined.'
+    },
+    {
+      name: 'fails when screen saver is set to never',
+      policyValue: 300,
+      deviceValue: { kind: 'never' as const },
+      expected: FAIL,
+      detail: 'Company policy: 5 minutes. Your setting: Never.'
+    },
+    {
+      name: 'fails when idle timeout is greater than policy',
+      policyValue: 300,
+      deviceValue: { kind: 'seconds' as const, seconds: 301 },
+      expected: FAIL,
+      detail: 'Company policy: 5 minutes. Your setting: 5 minutes 1 second.'
+    },
+    {
+      name: 'passes when idle timeout equals policy',
+      policyValue: 300,
+      deviceValue: { kind: 'seconds' as const, seconds: 300 },
+      expected: PASS,
+      detail: 'Company policy: 5 minutes. Your setting: 5 minutes.'
+    },
+    {
+      name: 'passes when idle timeout is below policy',
+      policyValue: 300,
+      deviceValue: { kind: 'seconds' as const, seconds: 60 },
+      expected: PASS,
+      detail: 'Company policy: 5 minutes. Your setting: 1 minute.'
+    }
+  ])('$name', ({ policyValue, deviceValue, expected, detail }) => {
+    const result = evaluateDevice(
+      createDevice({ screenIdleState: deviceValue }),
+      createPolicy({ screenIdle: { mac: policyValue, win: null } })
+    )
+
+    const screenIdle = result.elements.find((item) => item.key === 'screenIdle')
+
+    expect(result.screenIdle).toBe(expected)
+    expect(screenIdle).toMatchObject({
+      status: expected,
+      description:
+        'Screens which lock automatically when your laptop is unattended help prevent unauthorized access. Your timeout setting should be equal to or less than company policy.',
+      detail
+    })
+  })
+
+  it('uses macOS Screen Idle instructions when idle timeout exceeds policy', () => {
+    const result = evaluateDevice(
+      createDevice({
+        screenIdleState: { kind: 'seconds', seconds: 1800 }
+      }),
+      createPolicy({ screenIdle: { mac: 900, win: null } })
+    )
+
+    const screenIdle = result.elements.find((item) => item.key === 'screenIdle')
+
+    expect(result.screenIdle).toBe(FAIL)
+    expect(screenIdle).toMatchObject({
+      descriptionSteps: [
+        { text: 'Choose System Settings from the Apple menu.' },
+        {
+          text: 'Open ',
+          linkText: 'Lock Screen',
+          linkUrl: 'x-apple.systempreferences:com.apple.Lock',
+          suffix: ' on the left.'
+        },
+        {
+          text: 'Adjust the "Start Screen Saver when inactive" dropdown to less than or equal to the company policy (15 minutes).'
+        }
+      ]
+    })
+  })
+
+  it('shows N/A in macOS Screen Idle instructions when policy is invalid', () => {
+    const result = evaluateDevice(
+      createDevice({
+        screenIdleState: { kind: 'seconds', seconds: 600 }
+      }),
+      createPolicy({ screenIdle: { mac: null, win: null } })
+    )
+
+    const screenIdle = result.elements.find((item) => item.key === 'screenIdle')
+
+    expect(result.screenIdle).toBe(PASS)
+    expect(screenIdle).toMatchObject({
+      detail: 'Company policy: N/A. Your setting: 10 minutes.',
+      descriptionSteps: [
+        { text: 'Choose System Settings from the Apple menu.' },
+        {
+          text: 'Open ',
+          linkText: 'Lock Screen',
+          linkUrl: 'x-apple.systempreferences:com.apple.Lock',
+          suffix: ' on the left.'
+        },
+        {
+          text: 'For the "Start Screen Saver when inactive" dropdown, select a shorter time.',
+          children: [
+            {
+              text: 'Shorter idle times reduce the chance of someone accessing your Mac while it is unattended.'
+            }
+          ]
+        }
+      ]
     })
   })
 })
