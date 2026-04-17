@@ -352,9 +352,17 @@ describe('evaluateDevice screen idle result', () => {
     expect(screenIdle).toMatchObject({
       detail: 'Company policy: 65 minutes. Your setting: 65 minutes.',
       descriptionSteps: [
-        { text: 'Open Screen Saver Settings.' },
         {
-          text: 'Set the wait time to less than or equal to the company policy (65 minutes).'
+          text: 'Open ',
+          linkText: 'Lock screen settings',
+          linkUrl: 'ms-settings:lockscreen',
+          suffix: '.'
+        },
+        {
+          text: 'Scroll down and click "Screen saver" to open Screen Saver Settings.'
+        },
+        {
+          text: 'In Screen Saver Settings, set Wait to less than or equal to the company policy (65 minutes).'
         }
       ]
     })
@@ -376,6 +384,44 @@ describe('evaluateDevice screen idle result', () => {
     expect(result.screenIdle).toBe(FAIL)
     expect(screenIdle).toMatchObject({
       detail: 'Company policy: 10 minutes. Your setting: Never.'
+    })
+  })
+
+  it('uses Windows Screen Idle N/A policy instructions', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: true,
+        screenIdleState: { kind: 'seconds', seconds: 600 }
+      }),
+      createPolicy({ screenIdle: { mac: null, win: null } })
+    )
+
+    const screenIdle = result.elements.find((item) => item.key === 'screenIdle')
+
+    expect(result.screenIdle).toBe(PASS)
+    expect(screenIdle).toMatchObject({
+      detail: 'Company policy: N/A. Your setting: 10 minutes.',
+      descriptionSteps: [
+        {
+          text: 'Open ',
+          linkText: 'Lock screen settings',
+          linkUrl: 'ms-settings:lockscreen',
+          suffix: '.'
+        },
+        {
+          text: 'Scroll down and click "Screen saver" to open Screen Saver Settings.'
+        },
+        {
+          text: 'In Screen Saver Settings, choose a shorter Wait time.',
+          children: [
+            {
+              text: 'Shorter idle times reduce the chance of someone accessing your Windows device while it is unattended.'
+            }
+          ]
+        }
+      ]
     })
   })
 })

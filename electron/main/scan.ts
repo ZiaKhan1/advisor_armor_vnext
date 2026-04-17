@@ -29,8 +29,10 @@ const REMOTE_LOGIN_DESCRIPTION =
   "The 'Remote Login' setting on your device controls whether users can login remotely to the system."
 const SCREEN_IDLE_DESCRIPTION =
   'Screens which lock automatically when your laptop is unattended help prevent unauthorized access. Your timeout setting should be equal to or less than company policy.'
-const SCREEN_IDLE_RATIONALE =
+const MAC_SCREEN_IDLE_RATIONALE =
   'Shorter idle times reduce the chance of someone accessing your Mac while it is unattended.'
+const WINDOWS_SCREEN_IDLE_RATIONALE =
+  'Shorter idle times reduce the chance of someone accessing your Windows device while it is unattended.'
 
 async function resolvePublicIp(): Promise<string> {
   for (const url of [
@@ -698,19 +700,33 @@ function getScreenIdleDescriptionSteps(
             ? 'For the "Start Screen Saver when inactive" dropdown, select a shorter time.'
             : `Adjust the "Start Screen Saver when inactive" dropdown to less than or equal to the company policy (${policyLabel}).`,
         children:
-          policySeconds == null ? [{ text: SCREEN_IDLE_RATIONALE }] : undefined
+          policySeconds == null
+            ? [{ text: MAC_SCREEN_IDLE_RATIONALE }]
+            : undefined
       }
     ]
   }
 
   if (currentPlatform === 'win32') {
     return [
-      { text: 'Open Screen Saver Settings.' },
+      {
+        text: 'Open ',
+        linkText: 'Lock screen settings',
+        linkUrl: 'ms-settings:lockscreen',
+        suffix: '.'
+      },
+      {
+        text: 'Scroll down and click "Screen saver" to open Screen Saver Settings.'
+      },
       {
         text:
           policySeconds == null
-            ? 'Set the wait time; the lower the value, the safer it is.'
-            : `Set the wait time to less than or equal to the company policy (${policyLabel}).`
+            ? 'In Screen Saver Settings, choose a shorter Wait time.'
+            : `In Screen Saver Settings, set Wait to less than or equal to the company policy (${policyLabel}).`,
+        children:
+          policySeconds == null
+            ? [{ text: WINDOWS_SCREEN_IDLE_RATIONALE }]
+            : undefined
       }
     ]
   }
