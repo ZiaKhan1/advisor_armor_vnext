@@ -286,7 +286,7 @@ function createMockBackend(): BackendApi {
       ApprovedVersionforMAC: '14.0.0',
       NudgedVersionforMAC: '13.0.0',
       ScreenIdleWindows: 600,
-      ScreenIdleMac: 'invalid',
+      ScreenIdleMac: 600,
       ScreenLockWindows: 1,
       ScreenLockMac: 0,
       NetworkIDPolicy: 'FAIL',
