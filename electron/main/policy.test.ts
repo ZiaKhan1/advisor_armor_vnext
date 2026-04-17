@@ -67,4 +67,23 @@ describe('parsePolicyResponse', () => {
         .screenIdle.mac
     ).toBeNull()
   })
+
+  it('normalizes Windows screen lock policy values', () => {
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenLockWindows: 1 } }, false)
+        .screenLock.win
+    ).toBe(1)
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenLockWindows: '0' } }, false)
+        .screenLock.win
+    ).toBe(0)
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenLockWindows: 2 } }, false)
+        .screenLock.win
+    ).toBeNull()
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenLockWindows: 'abc' } }, false)
+        .screenLock.win
+    ).toBeNull()
+  })
 })

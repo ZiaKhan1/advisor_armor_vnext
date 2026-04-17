@@ -479,7 +479,8 @@ function ScanRow({
           item.key === 'diskEncryption' ||
           item.key === 'automaticUpdates' ||
           item.key === 'remoteLogin' ||
-          item.key === 'screenIdle' ? null : (
+          item.key === 'screenIdle' ||
+          item.key === 'screenLock' ? null : (
             <>
               <p className="mt-2 font-medium text-slate-800">
                 Recommended action

@@ -6,6 +6,7 @@ import type {
   ScanElementResult,
   ScanResultData,
   ScreenIdleState,
+  ScreenLockState,
   WifiConnection
 } from '@shared/models'
 import { FAIL, NUDGE, PASS, type PolicyStatus } from '@shared/status'
@@ -17,7 +18,7 @@ import {
 import { readAutomaticUpdates } from './scan-checks/automatic-updates'
 import { readFirewallEnabled } from './scan-checks/firewall'
 import { readRemoteLoginEnabled } from './scan-checks/remote-login'
-import { readScreenIdle } from './scan-checks/screen-security'
+import { readScreenIdle, readScreenLock } from './scan-checks/screen-security'
 
 const FIREWALL_DESCRIPTION =
   'Firewalls control network traffic into and out of a system. Enabling the firewall on your device can prevent network-based attacks on your system and is especially important if you make use of unsecured wireless networks (such as at coffee shops and airports).'
@@ -33,6 +34,12 @@ const MAC_SCREEN_IDLE_RATIONALE =
   'Shorter idle times reduce the chance of someone accessing your Mac while it is unattended.'
 const WINDOWS_SCREEN_IDLE_RATIONALE =
   'Shorter idle times reduce the chance of someone accessing your Windows device while it is unattended.'
+const SCREEN_LOCK_DESCRIPTION =
+  'Requiring a password after the screen saver starts or the display turns off helps prevent unauthorized access when your system is unattended. This locks your screen until you enter your password.'
+const MAC_SCREEN_LOCK_RATIONALE =
+  'Shorter lock times reduce the chance of someone accessing your Mac while it is unattended.'
+const WINDOWS_SCREEN_LOCK_RATIONALE =
+  'Requiring logon on resume reduces the chance of someone accessing your Windows device while it is unattended.'
 
 async function resolvePublicIp(): Promise<string> {
   for (const url of [
@@ -60,6 +67,7 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
   const automaticUpdates = await readAutomaticUpdates(currentPlatform)
   const remoteLoginEnabled = await readRemoteLoginEnabled(currentPlatform)
   const screenIdleState = await readScreenIdle(currentPlatform)
+  const screenLockState = await readScreenLock(currentPlatform)
 
   const wifiConnections: WifiConnection[] = [
     {
@@ -105,7 +113,9 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
     screenIdleState,
     screenIdleSeconds:
       screenIdleState.kind === 'seconds' ? screenIdleState.seconds : null,
-    screenLockSeconds: 0
+    screenLockState,
+    screenLockSeconds:
+      screenLockState.kind === 'seconds' ? screenLockState.seconds : null
   }
 }
 
@@ -154,17 +164,6 @@ function evaluateBoolean(
   return requiredStatus
 }
 
-function evaluateNumeric(
-  requiredStatus: PolicyStatus,
-  actual: number | null,
-  maxAllowed: number | null
-): PolicyStatus {
-  if (actual == null || maxAllowed == null || actual <= maxAllowed) {
-    return PASS
-  }
-  return requiredStatus
-}
-
 function evaluateScreenIdle(
   idleState: ScreenIdleState,
   maxAllowed: number | null
@@ -178,6 +177,44 @@ function evaluateScreenIdle(
   }
 
   return idleState.seconds <= maxAllowed ? PASS : FAIL
+}
+
+function evaluateScreenLock(
+  currentPlatform: string,
+  lockState: ScreenLockState,
+  policyValue: number | null
+): PolicyStatus {
+  if (policyValue == null || lockState.kind === 'unknown') {
+    return PASS
+  }
+
+  if (currentPlatform === 'win32') {
+    if (policyValue === 0) {
+      return PASS
+    }
+
+    if (policyValue !== 1) {
+      return PASS
+    }
+
+    return lockState.kind === 'required' ? PASS : FAIL
+  }
+
+  if (currentPlatform === 'darwin') {
+    if (lockState.kind === 'never') {
+      return FAIL
+    }
+
+    if (lockState.kind === 'immediately') {
+      return PASS
+    }
+
+    if (lockState.kind === 'seconds') {
+      return lockState.seconds <= policyValue ? PASS : FAIL
+    }
+  }
+
+  return PASS
 }
 
 export function evaluateDevice(
@@ -210,9 +247,9 @@ export function evaluateDevice(
     device.screenIdleState,
     isMac ? policy.screenIdle.mac : policy.screenIdle.win
   )
-  const screenLock = evaluateNumeric(
-    PASS,
-    device.screenLockSeconds,
+  const screenLock = evaluateScreenLock(
+    device.platform,
+    device.screenLockState,
     isMac ? policy.screenLock.mac : policy.screenLock.win
   )
   const activeWifiNetwork = evaluateBoolean(
@@ -332,8 +369,21 @@ export function evaluateDevice(
       'screenLock',
       'Screen Lock',
       screenLock,
-      `Lock timeout: ${device.screenLockSeconds ?? 'Unknown'} seconds`,
-      'Require screen lock immediately or within policy.'
+      describeScreenLockState(
+        device.platform,
+        device.screenLockState,
+        isMac ? policy.screenLock.mac : policy.screenLock.win
+      ),
+      recommendScreenLockAction(
+        device.platform,
+        device.screenLockState,
+        isMac ? policy.screenLock.mac : policy.screenLock.win
+      ),
+      SCREEN_LOCK_DESCRIPTION,
+      getScreenLockDescriptionSteps(
+        device.platform,
+        isMac ? policy.screenLock.mac : policy.screenLock.win
+      )
     ),
     buildElement(
       'automaticUpdates',
@@ -738,6 +788,71 @@ function getScreenIdleDescriptionSteps(
   ]
 }
 
+function getScreenLockDescriptionSteps(
+  currentPlatform: string,
+  policyValue: number | null
+): ScanElementDescriptionStep[] {
+  if (currentPlatform === 'darwin') {
+    const policyLabel =
+      policyValue == null ? 'N/A' : formatMacScreenLockPolicyValue(policyValue)
+
+    return [
+      { text: 'Choose System Settings from the Apple menu.' },
+      {
+        text: 'Click ',
+        linkText: 'Lock Screen',
+        linkUrl: 'x-apple.systempreferences:com.apple.Lock',
+        suffix: ' on the left.'
+      },
+      {
+        text:
+          policyValue == null
+            ? 'Set the "Require password after screen saver begins or display is turned off" dropdown to a shorter time.'
+            : `Set the "Require password after screen saver begins or display is turned off" dropdown to less than or equal to the company policy (${policyLabel}).`,
+        children:
+          policyValue == null
+            ? [{ text: MAC_SCREEN_LOCK_RATIONALE }]
+            : undefined
+      }
+    ]
+  }
+
+  if (currentPlatform === 'win32') {
+    const finalStep =
+      policyValue == null
+        ? {
+            text: 'In Screen Saver Settings, turn on "On resume, display logon screen".',
+            children: [{ text: WINDOWS_SCREEN_LOCK_RATIONALE }]
+          }
+        : policyValue === 1
+          ? {
+              text: 'In Screen Saver Settings, make sure "On resume, display logon screen" is checked.'
+            }
+          : {
+              text: 'In Screen Saver Settings, no change is required by company policy.'
+            }
+
+    return [
+      {
+        text: 'Open ',
+        linkText: 'Lock screen settings',
+        linkUrl: 'ms-settings:lockscreen',
+        suffix: '.'
+      },
+      {
+        text: 'Scroll down and click "Screen saver" to open Screen Saver Settings.'
+      },
+      finalStep
+    ]
+  }
+
+  return [
+    {
+      text: 'Open device settings and require a password when the screen resumes.'
+    }
+  ]
+}
+
 function describeAppState(
   prohibitedApps: string[],
   missingCategories: string[]
@@ -888,6 +1003,73 @@ function describeScreenIdleState(
   )}.`
 }
 
+function describeScreenLockState(
+  currentPlatform: string,
+  lockState: ScreenLockState,
+  policyValue: number | null
+): string {
+  const policyLabel = formatScreenLockPolicyValue(currentPlatform, policyValue)
+  const settingLabel = formatScreenLockState(currentPlatform, lockState)
+
+  return `Company policy: ${policyLabel}. Your setting: ${settingLabel}.`
+}
+
+function formatScreenLockPolicyValue(
+  currentPlatform: string,
+  policyValue: number | null
+): string {
+  if (policyValue == null) {
+    return 'N/A'
+  }
+
+  if (currentPlatform === 'win32') {
+    return policyValue === 1
+      ? 'Logon screen required on resume'
+      : 'Logon screen not required on resume'
+  }
+
+  return formatMacScreenLockPolicyValue(policyValue)
+}
+
+function formatMacScreenLockPolicyValue(policyValue: number): string {
+  if (policyValue === 0) {
+    return 'Immediately'
+  }
+
+  return formatHoursMinutesSeconds(policyValue)
+}
+
+function formatScreenLockState(
+  currentPlatform: string,
+  lockState: ScreenLockState
+): string {
+  if (currentPlatform === 'win32') {
+    if (lockState.kind === 'required') {
+      return 'Logon screen required on resume'
+    }
+
+    if (lockState.kind === 'notRequired') {
+      return 'Logon screen not required on resume'
+    }
+
+    return 'Unknown'
+  }
+
+  if (lockState.kind === 'immediately') {
+    return 'Immediately'
+  }
+
+  if (lockState.kind === 'seconds') {
+    return formatHoursMinutesSeconds(lockState.seconds)
+  }
+
+  if (lockState.kind === 'never') {
+    return 'Never'
+  }
+
+  return 'Unknown'
+}
+
 function formatScreenIdleState(
   currentPlatform: string,
   idleState: ScreenIdleState
@@ -1006,6 +1188,30 @@ function recommendScreenIdleAction(
   }
 
   return 'Reduce the screen idle timeout in device settings.'
+}
+
+function recommendScreenLockAction(
+  currentPlatform: string,
+  lockState: ScreenLockState,
+  policyValue: number | null
+): string {
+  if (
+    policyValue == null ||
+    lockState.kind === 'unknown' ||
+    evaluateScreenLock(currentPlatform, lockState, policyValue) === PASS
+  ) {
+    return 'No action required.'
+  }
+
+  if (currentPlatform === 'darwin') {
+    return 'Open System Settings > Lock Screen and reduce the password requirement delay.'
+  }
+
+  if (currentPlatform === 'win32') {
+    return 'Open Screen Saver Settings and turn on "On resume, display logon screen".'
+  }
+
+  return 'Require a password when the screen resumes.'
 }
 
 function automaticUpdateCheckStatus(enabled: boolean | null): PolicyStatus {

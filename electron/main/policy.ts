@@ -22,6 +22,14 @@ function convertToIntOrNull(
   return intValue < minAllowedValue ? null : intValue
 }
 
+function convertWindowsScreenLockPolicy(value: unknown): number | null {
+  const intValue = convertToIntOrNull(value, 0)
+  if (intValue === 0 || intValue === 1) {
+    return intValue
+  }
+  return null
+}
+
 function getProhibitedApps(appPolicy: unknown): string[] {
   const apps = (
     appPolicy as
@@ -100,7 +108,7 @@ export function parsePolicyResponse(
       mac: convertToIntOrNull(systemPolicy.ScreenIdleMac, 1)
     },
     screenLock: {
-      win: convertToIntOrNull(systemPolicy.ScreenLockWindows, 0),
+      win: convertWindowsScreenLockPolicy(systemPolicy.ScreenLockWindows),
       mac: convertToIntOrNull(systemPolicy.ScreenLockMac, 0)
     },
     remoteLogin: {

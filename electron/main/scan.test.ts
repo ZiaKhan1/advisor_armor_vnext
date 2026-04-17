@@ -88,6 +88,7 @@ function createDevice(overrides: Partial<DeviceSnapshot> = {}): DeviceSnapshot {
     wifiConnections: [],
     screenIdleState: { kind: 'unknown' },
     screenIdleSeconds: null,
+    screenLockState: { kind: 'unknown' },
     screenLockSeconds: null,
     ...overrides
   }
@@ -418,6 +419,258 @@ describe('evaluateDevice screen idle result', () => {
           children: [
             {
               text: 'Shorter idle times reduce the chance of someone accessing your Windows device while it is unattended.'
+            }
+          ]
+        }
+      ]
+    })
+  })
+})
+
+describe('evaluateDevice screen lock result', () => {
+  it.each([
+    {
+      name: 'passes when macOS policy is not configured',
+      policyValue: null,
+      deviceValue: { kind: 'seconds' as const, seconds: 300 },
+      expected: PASS,
+      detail: 'Company policy: N/A. Your setting: 5 minutes.'
+    },
+    {
+      name: 'passes when macOS device setting is unknown',
+      policyValue: 300,
+      deviceValue: { kind: 'unknown' as const },
+      expected: PASS,
+      detail: 'Company policy: 5 minutes. Your setting: Unknown.'
+    },
+    {
+      name: 'passes when macOS policy requires immediately and device is immediately',
+      policyValue: 0,
+      deviceValue: { kind: 'immediately' as const },
+      expected: PASS,
+      detail: 'Company policy: Immediately. Your setting: Immediately.'
+    },
+    {
+      name: 'fails when macOS policy requires immediately and device has a delay',
+      policyValue: 0,
+      deviceValue: { kind: 'seconds' as const, seconds: 5 },
+      expected: FAIL,
+      detail: 'Company policy: Immediately. Your setting: 5 seconds.'
+    },
+    {
+      name: 'fails when macOS screen lock is set to never',
+      policyValue: 300,
+      deviceValue: { kind: 'never' as const },
+      expected: FAIL,
+      detail: 'Company policy: 5 minutes. Your setting: Never.'
+    },
+    {
+      name: 'fails when macOS lock delay is greater than policy',
+      policyValue: 300,
+      deviceValue: { kind: 'seconds' as const, seconds: 301 },
+      expected: FAIL,
+      detail: 'Company policy: 5 minutes. Your setting: 5 minutes 1 second.'
+    },
+    {
+      name: 'passes when macOS lock delay equals policy',
+      policyValue: 300,
+      deviceValue: { kind: 'seconds' as const, seconds: 300 },
+      expected: PASS,
+      detail: 'Company policy: 5 minutes. Your setting: 5 minutes.'
+    }
+  ])('$name', ({ policyValue, deviceValue, expected, detail }) => {
+    const result = evaluateDevice(
+      createDevice({ screenLockState: deviceValue }),
+      createPolicy({ screenLock: { mac: policyValue, win: null } })
+    )
+
+    const screenLock = result.elements.find((item) => item.key === 'screenLock')
+
+    expect(result.screenLock).toBe(expected)
+    expect(screenLock).toMatchObject({
+      status: expected,
+      description:
+        'Requiring a password after the screen saver starts or the display turns off helps prevent unauthorized access when your system is unattended. This locks your screen until you enter your password.',
+      detail
+    })
+  })
+
+  it('uses macOS Screen Lock instructions when policy is configured', () => {
+    const result = evaluateDevice(
+      createDevice({
+        screenLockState: { kind: 'seconds', seconds: 1800 }
+      }),
+      createPolicy({ screenLock: { mac: 900, win: null } })
+    )
+
+    const screenLock = result.elements.find((item) => item.key === 'screenLock')
+
+    expect(result.screenLock).toBe(FAIL)
+    expect(screenLock).toMatchObject({
+      descriptionSteps: [
+        { text: 'Choose System Settings from the Apple menu.' },
+        {
+          text: 'Click ',
+          linkText: 'Lock Screen',
+          linkUrl: 'x-apple.systempreferences:com.apple.Lock',
+          suffix: ' on the left.'
+        },
+        {
+          text: 'Set the "Require password after screen saver begins or display is turned off" dropdown to less than or equal to the company policy (15 minutes).'
+        }
+      ]
+    })
+  })
+
+  it('uses macOS Screen Lock N/A policy instructions', () => {
+    const result = evaluateDevice(
+      createDevice({
+        screenLockState: { kind: 'seconds', seconds: 300 }
+      }),
+      createPolicy({ screenLock: { mac: null, win: null } })
+    )
+
+    const screenLock = result.elements.find((item) => item.key === 'screenLock')
+
+    expect(result.screenLock).toBe(PASS)
+    expect(screenLock).toMatchObject({
+      detail: 'Company policy: N/A. Your setting: 5 minutes.',
+      descriptionSteps: [
+        { text: 'Choose System Settings from the Apple menu.' },
+        {
+          text: 'Click ',
+          linkText: 'Lock Screen',
+          linkUrl: 'x-apple.systempreferences:com.apple.Lock',
+          suffix: ' on the left.'
+        },
+        {
+          text: 'Set the "Require password after screen saver begins or display is turned off" dropdown to a shorter time.',
+          children: [
+            {
+              text: 'Shorter lock times reduce the chance of someone accessing your Mac while it is unattended.'
+            }
+          ]
+        }
+      ]
+    })
+  })
+
+  it.each([
+    {
+      name: 'passes when Windows policy requires logon and setting is required',
+      policyValue: 1,
+      deviceValue: { kind: 'required' as const },
+      expected: PASS,
+      detail:
+        'Company policy: Logon screen required on resume. Your setting: Logon screen required on resume.'
+    },
+    {
+      name: 'fails when Windows policy requires logon and setting is not required',
+      policyValue: 1,
+      deviceValue: { kind: 'notRequired' as const },
+      expected: FAIL,
+      detail:
+        'Company policy: Logon screen required on resume. Your setting: Logon screen not required on resume.'
+    },
+    {
+      name: 'passes when Windows policy does not require logon',
+      policyValue: 0,
+      deviceValue: { kind: 'notRequired' as const },
+      expected: PASS,
+      detail:
+        'Company policy: Logon screen not required on resume. Your setting: Logon screen not required on resume.'
+    },
+    {
+      name: 'passes when Windows policy is not configured',
+      policyValue: null,
+      deviceValue: { kind: 'unknown' as const },
+      expected: PASS,
+      detail: 'Company policy: N/A. Your setting: Unknown.'
+    }
+  ])('$name', ({ policyValue, deviceValue, expected, detail }) => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: true,
+        screenLockState: deviceValue
+      }),
+      createPolicy({ screenLock: { mac: null, win: policyValue } })
+    )
+
+    const screenLock = result.elements.find((item) => item.key === 'screenLock')
+
+    expect(result.screenLock).toBe(expected)
+    expect(screenLock).toMatchObject({
+      status: expected,
+      detail
+    })
+  })
+
+  it('uses Windows Screen Lock required policy instructions', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: true,
+        screenLockState: { kind: 'required' }
+      }),
+      createPolicy({ screenLock: { mac: null, win: 1 } })
+    )
+
+    const screenLock = result.elements.find((item) => item.key === 'screenLock')
+
+    expect(result.screenLock).toBe(PASS)
+    expect(screenLock).toMatchObject({
+      descriptionSteps: [
+        {
+          text: 'Open ',
+          linkText: 'Lock screen settings',
+          linkUrl: 'ms-settings:lockscreen',
+          suffix: '.'
+        },
+        {
+          text: 'Scroll down and click "Screen saver" to open Screen Saver Settings.'
+        },
+        {
+          text: 'In Screen Saver Settings, make sure "On resume, display logon screen" is checked.'
+        }
+      ]
+    })
+  })
+
+  it('uses Windows Screen Lock N/A policy instructions', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: true,
+        screenLockState: { kind: 'notRequired' }
+      }),
+      createPolicy({ screenLock: { mac: null, win: null } })
+    )
+
+    const screenLock = result.elements.find((item) => item.key === 'screenLock')
+
+    expect(result.screenLock).toBe(PASS)
+    expect(screenLock).toMatchObject({
+      detail:
+        'Company policy: N/A. Your setting: Logon screen not required on resume.',
+      descriptionSteps: [
+        {
+          text: 'Open ',
+          linkText: 'Lock screen settings',
+          linkUrl: 'ms-settings:lockscreen',
+          suffix: '.'
+        },
+        {
+          text: 'Scroll down and click "Screen saver" to open Screen Saver Settings.'
+        },
+        {
+          text: 'In Screen Saver Settings, turn on "On resume, display logon screen".',
+          children: [
+            {
+              text: 'Requiring logon on resume reduces the chance of someone accessing your Windows device while it is unattended.'
             }
           ]
         }
