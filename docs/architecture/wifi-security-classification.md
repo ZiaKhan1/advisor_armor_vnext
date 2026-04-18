@@ -49,6 +49,11 @@ Recommended helper output:
 
 TypeScript owns classification and backend policy evaluation.
 
+SSID should be included when available. It may be shown in the scan detail and
+logged with the WiFi facts so support can correlate user reports with scan logs.
+BSSID should not be collected or logged unless a later investigation requirement
+explicitly needs physical access point correlation.
+
 ## macOS CoreWLAN Classification
 
 Apple's `CWSecurity` enum identifies the WiFi security type reported by
@@ -128,6 +133,9 @@ Recommended parsed facts:
 }
 ```
 
+SSID should be included when available for the same support/debugging purpose as
+macOS. BSSID is not required for Active WiFi Network v1.
+
 If `netsh` parsing proves unreliable in customer environments, move the Windows
 read layer to a typed helper that calls the Windows WLAN API directly. Keep the
 classification and policy logic in TypeScript.
@@ -187,3 +195,8 @@ The Swift helper must not emit PASS, NUDGE, or FAIL. It should emit only
 observed WiFi facts. The Windows read layer follows the same rule. The scan
 layer maps observed facts to secure, insecure, or unknown, and then applies
 `ActiveWifiNetwork` policy.
+
+The main process should log observed Active WiFi facts and the resulting
+classification. Log SSID, security/authentication/cipher fields, and the
+classification result. Avoid logging raw command output unless parsing fails,
+and keep any raw-output log bounded.
