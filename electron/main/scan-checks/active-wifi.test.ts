@@ -95,6 +95,12 @@ describe('classifyWindowsWifiSecurity', () => {
       expectedReason: 'modern-protocol'
     },
     {
+      authentication: 'WPA2 Personal',
+      cipher: 'CCMP-256',
+      expectedStatus: 'secure',
+      expectedReason: 'modern-protocol'
+    },
+    {
       authentication: 'WPA2PSK',
       cipher: 'GCMP-256',
       expectedStatus: 'secure',
@@ -122,6 +128,10 @@ describe('classifyWindowsWifiSecurity', () => {
 })
 
 describe('parseWindowsActiveWifiFacts', () => {
+  it('returns empty facts for empty output', () => {
+    expect(parseWindowsActiveWifiFacts('')).toEqual({})
+  })
+
   it('parses the netsh JSON projection', () => {
     expect(
       parseWindowsActiveWifiFacts(
@@ -131,6 +141,12 @@ describe('parseWindowsActiveWifiFacts', () => {
       ssid: 'OfficeNet',
       authentication: 'WPA2-Personal',
       cipher: 'CCMP'
+    })
+  })
+
+  it('omits missing optional fields', () => {
+    expect(parseWindowsActiveWifiFacts('{"SSID":"OfficeNet"}')).toEqual({
+      ssid: 'OfficeNet'
     })
   })
 })

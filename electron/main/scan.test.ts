@@ -208,6 +208,215 @@ describe('evaluateDevice firewall result', () => {
   })
 })
 
+describe('evaluateDevice active Wi-Fi result', () => {
+  it.each([
+    {
+      name: 'passes secure Wi-Fi regardless of fail policy',
+      activeWifiSecure: true,
+      policyValue: FAIL,
+      expected: PASS
+    },
+    {
+      name: 'passes insecure Wi-Fi when policy is PASS',
+      activeWifiSecure: false,
+      policyValue: PASS,
+      expected: PASS
+    },
+    {
+      name: 'nudges insecure Wi-Fi when policy is NUDGE',
+      activeWifiSecure: false,
+      policyValue: NUDGE,
+      expected: NUDGE
+    },
+    {
+      name: 'fails insecure Wi-Fi when policy is FAIL',
+      activeWifiSecure: false,
+      policyValue: FAIL,
+      expected: FAIL
+    },
+    {
+      name: 'passes unknown Wi-Fi when policy is FAIL',
+      activeWifiSecure: null,
+      policyValue: FAIL,
+      expected: PASS
+    }
+  ])('$name', ({ activeWifiSecure, policyValue, expected }) => {
+    const result = evaluateDevice(
+      createDevice({
+        activeWifiSecure,
+        activeWifiAssessment:
+          activeWifiSecure === false
+            ? {
+                status: 'insecure',
+                reason: 'no-password',
+                securityLabel: 'Open',
+                detail: 'Current Wi-Fi "Guest" does not require a password.'
+              }
+            : activeWifiSecure == null
+              ? {
+                  status: 'unknown',
+                  reason: 'unknown',
+                  securityLabel: 'Unknown',
+                  detail: 'Current Wi-Fi security could not be determined.'
+                }
+              : {
+                  status: 'secure',
+                  reason: 'modern-protocol',
+                  securityLabel: 'WPA2 Personal',
+                  detail:
+                    'Current Wi-Fi "OfficeNet" uses a modern security mode: WPA2 Personal.'
+                }
+      }),
+      createPolicy({ activeWifiNetwork: policyValue })
+    )
+
+    expect(result.activeWifiNetwork).toBe(expected)
+  })
+
+  it('uses macOS no-password detail and remediation steps', () => {
+    const result = evaluateDevice(
+      createDevice({
+        activeWifiSecure: false,
+        activeWifiAssessment: {
+          status: 'insecure',
+          reason: 'no-password',
+          securityLabel: 'Open',
+          detail: 'Current Wi-Fi "Guest" does not require a password.'
+        }
+      }),
+      createPolicy({ activeWifiNetwork: NUDGE })
+    )
+
+    const activeWifi = result.elements.find(
+      (item) => item.key === 'activeWifiNetwork'
+    )
+
+    expect(activeWifi).toMatchObject({
+      status: NUDGE,
+      detail:
+        'Current Wi-Fi "Guest" does not require a password. Use a password-protected WPA2 or WPA3 network.',
+      descriptionSteps: [
+        { text: 'Choose System Settings from the Apple menu.' },
+        {
+          text: 'Choose ',
+          linkText: 'Wi-Fi',
+          linkUrl:
+            'x-apple.systempreferences:com.apple.wifi-settings-extension',
+          suffix:
+            ' to see your current Wi-Fi connection and other available networks.'
+        },
+        {
+          text: 'Disconnect from the current Wi-Fi network:',
+          children: [
+            {
+              text: 'Click Details next to the currently connected Wi-Fi network.'
+            },
+            { text: 'Click Forget This Network.' },
+            { text: 'Confirm or remove the network if prompted.' }
+          ]
+        },
+        {
+          text: 'Connect to a secure Wi-Fi network:',
+          children: [
+            {
+              text: 'Select a password-protected WPA2 or WPA3 network from the available Wi-Fi networks.'
+            },
+            { text: 'Enter the network password if prompted.' },
+            { text: 'Click Connect.' }
+          ]
+        }
+      ]
+    })
+  })
+
+  it('uses Windows weak-protocol detail and remediation steps', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: true,
+        activeWifiSecure: false,
+        activeWifiAssessment: {
+          status: 'insecure',
+          reason: 'weak-protocol',
+          securityLabel: 'WPA-Personal / TKIP',
+          detail: 'Current Wi-Fi "Office" uses a weak security mode.'
+        }
+      }),
+      createPolicy({ activeWifiNetwork: FAIL })
+    )
+
+    const activeWifi = result.elements.find(
+      (item) => item.key === 'activeWifiNetwork'
+    )
+
+    expect(activeWifi).toMatchObject({
+      status: FAIL,
+      detail:
+        'Current Wi-Fi "Office" uses a weak security mode. Use a WPA2 or WPA3 network.',
+      descriptionSteps: [
+        {
+          text: 'Open ',
+          linkText: 'Wi-Fi',
+          linkUrl: 'ms-settings:network-wifi',
+          suffix: ' in Settings.'
+        },
+        { text: 'Click Show available networks.' },
+        { text: 'Click Disconnect to disconnect the current Wi-Fi network.' },
+        {
+          text: 'Connect to a secure Wi-Fi network:',
+          children: [
+            {
+              text: 'Select a password-protected WPA2 or WPA3 network from the available Wi-Fi networks list.'
+            },
+            { text: 'Enter the network password if prompted.' },
+            { text: 'Click Connect.' }
+          ]
+        }
+      ]
+    })
+  })
+
+  it('uses pass-safe wording when Wi-Fi security is unknown', () => {
+    const result = evaluateDevice(
+      createDevice({
+        activeWifiSecure: null,
+        activeWifiAssessment: {
+          status: 'unknown',
+          reason: 'unknown',
+          securityLabel: 'Unknown',
+          detail: 'Current Wi-Fi security could not be determined.'
+        }
+      }),
+      createPolicy({ activeWifiNetwork: FAIL })
+    )
+
+    const activeWifi = result.elements.find(
+      (item) => item.key === 'activeWifiNetwork'
+    )
+
+    expect(result.activeWifiNetwork).toBe(PASS)
+    expect(activeWifi).toMatchObject({
+      status: PASS,
+      detail: 'Current Wi-Fi security could not be determined.',
+      descriptionSteps: [
+        { text: 'Choose System Settings from the Apple menu.' },
+        {
+          text: 'Choose ',
+          linkText: 'Wi-Fi',
+          linkUrl:
+            'x-apple.systempreferences:com.apple.wifi-settings-extension',
+          suffix:
+            ' to see your current Wi-Fi connection and other available networks.'
+        },
+        {
+          text: 'When possible, connect to a password-protected WPA2 or WPA3 network.'
+        }
+      ]
+    })
+  })
+})
+
 describe('evaluateDevice screen idle result', () => {
   it.each([
     {
