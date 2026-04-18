@@ -1,11 +1,42 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   parseMacScreenIdleState,
   parseMacScreenLockStatus,
   parseMacScreenLockState,
   parseWindowsScreenLockState,
-  parseWindowsScreenIdleState
+  parseWindowsScreenIdleState,
+  readScreenLock
 } from './screen-security'
+
+const commandRunnerMocks = vi.hoisted(() => ({
+  runCommand: vi.fn()
+}))
+
+vi.mock('../command-runner', () => ({
+  runCommand: commandRunnerMocks.runCommand
+}))
+
+vi.mock('../logging', () => ({
+  logger: {
+    warn: vi.fn(),
+    error: vi.fn()
+  }
+}))
+
+function commandResult(
+  overrides: Partial<{ ok: boolean; stdout: string; stderr: string }> = {}
+) {
+  return {
+    ok: true,
+    stdout: '',
+    stderr: '',
+    ...overrides
+  }
+}
+
+beforeEach(() => {
+  commandRunnerMocks.runCommand.mockReset()
+})
 
 describe('parseMacScreenIdleState', () => {
   it('maps a positive idleTime to seconds', () => {
@@ -170,5 +201,79 @@ describe('parseWindowsScreenLockState', () => {
     expect(parseWindowsScreenLockState('maybe\n')).toEqual({
       kind: 'unknown'
     })
+  })
+})
+
+describe('readScreenLock on macOS', () => {
+  it('reads sysadminctl first and parses valid stderr output without fallback', async () => {
+    commandRunnerMocks.runCommand.mockResolvedValueOnce(
+      commandResult({
+        stderr:
+          '2026-04-18 20:04:20.511 sysadminctl[17120:2184752] screenLock is off'
+      })
+    )
+
+    await expect(readScreenLock('darwin')).resolves.toEqual({ kind: 'never' })
+
+    expect(commandRunnerMocks.runCommand).toHaveBeenCalledTimes(1)
+    expect(commandRunnerMocks.runCommand).toHaveBeenCalledWith(
+      '/usr/sbin/sysadminctl',
+      ['-screenLock', 'status'],
+      10_000
+    )
+  })
+
+  it('falls back to defaults when sysadminctl output cannot be parsed', async () => {
+    commandRunnerMocks.runCommand
+      .mockResolvedValueOnce(
+        commandResult({
+          stdout: 'aks connection failed',
+          stderr: 'unexpected status'
+        })
+      )
+      .mockResolvedValueOnce(commandResult({ stdout: '1' }))
+      .mockResolvedValueOnce(commandResult({ stdout: '300' }))
+
+    await expect(readScreenLock('darwin')).resolves.toEqual({
+      kind: 'seconds',
+      seconds: 300
+    })
+
+    expect(commandRunnerMocks.runCommand).toHaveBeenNthCalledWith(
+      1,
+      '/usr/sbin/sysadminctl',
+      ['-screenLock', 'status'],
+      10_000
+    )
+    expect(commandRunnerMocks.runCommand).toHaveBeenNthCalledWith(
+      2,
+      'defaults',
+      ['read', 'com.apple.screensaver', 'askForPassword'],
+      10_000
+    )
+    expect(commandRunnerMocks.runCommand).toHaveBeenNthCalledWith(
+      3,
+      'defaults',
+      ['read', 'com.apple.screensaver', 'askForPasswordDelay'],
+      10_000
+    )
+  })
+
+  it('falls back to defaults when sysadminctl fails', async () => {
+    commandRunnerMocks.runCommand
+      .mockResolvedValueOnce(
+        commandResult({
+          ok: false,
+          stderr: 'sysadminctl failed'
+        })
+      )
+      .mockResolvedValueOnce(commandResult({ stdout: '1' }))
+      .mockResolvedValueOnce(commandResult({ stdout: '0' }))
+
+    await expect(readScreenLock('darwin')).resolves.toEqual({
+      kind: 'immediately'
+    })
+
+    expect(commandRunnerMocks.runCommand).toHaveBeenCalledTimes(3)
   })
 })
