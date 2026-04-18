@@ -29,6 +29,7 @@ docs/
 - electron-vite dev workflow & build tooling → `docs/architecture/build-tooling.md`
 - API contract & policy JSON → `docs/architecture/api-contract.md`
 - Scan elements & result logic → `docs/architecture/scan-logic.md`
+- WiFi security classification → `docs/architecture/wifi-security-classification.md`
 - Logging rules → `docs/architecture/logging.md`
 - Code quality (ESLint, Prettier, husky) → `docs/architecture/code-quality.md`
 - Testing strategy → `docs/architecture/testing.md`

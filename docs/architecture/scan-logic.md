@@ -130,9 +130,13 @@ created: 2026-04-05
 
 - **Policy field:** `ActiveWifiNetwork`
 - **Valid policy values:** PASS/FAIL/NUDGE (case-insensitive). Anything else → treat as PASS
-- **Check:** Is the currently connected WiFi network using a secure protocol (WPA2/WPA3)? Open/WEP/WPA = not secure.
-- **Result:** Standard PASS/FAIL/NUDGE logic
-- **Implementation detail:** TBD
+- **Check:** Is the currently connected WiFi network classified as secure?
+- **Security classification:** See `docs/architecture/wifi-security-classification.md`
+- **Result logic:**
+  - Secure WiFi → **PASS**
+  - Insecure WiFi → apply standard PASS/FAIL/NUDGE logic from `ActiveWifiNetwork`
+  - Unknown / cannot determine → **PASS** (do not penalise user when the app cannot determine state)
+- **Implementation detail:** Mac reads current WiFi facts from a Swift/CoreWLAN helper. The helper reports facts only; TypeScript classifies security and applies policy.
 - **Platforms:** Mac, Windows
 
 ### 12. Known WiFi Networks
