@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   parseMacScreenIdleState,
+  parseMacScreenLockStatus,
   parseMacScreenLockState,
   parseWindowsScreenLockState,
   parseWindowsScreenIdleState
@@ -92,6 +93,53 @@ describe('parseMacScreenLockState', () => {
       kind: 'unknown'
     })
     expect(parseMacScreenLockState('1\n', '5 seconds\n')).toEqual({
+      kind: 'unknown'
+    })
+  })
+})
+
+describe('parseMacScreenLockStatus', () => {
+  it('maps immediate delay to immediately', () => {
+    expect(
+      parseMacScreenLockStatus(
+        '2026-04-18 19:15:11.264 sysadminctl[91196:2085274] screenLock delay is immediate\n'
+      )
+    ).toEqual({
+      kind: 'immediately'
+    })
+  })
+
+  it('maps second delay to seconds', () => {
+    expect(
+      parseMacScreenLockStatus('screenLock delay is 180 seconds\n')
+    ).toEqual({
+      kind: 'seconds',
+      seconds: 180
+    })
+  })
+
+  it('maps singular second delay to seconds', () => {
+    expect(parseMacScreenLockStatus('screenLock delay is 1 second\n')).toEqual({
+      kind: 'seconds',
+      seconds: 1
+    })
+  })
+
+  it('maps disabled values to never', () => {
+    expect(parseMacScreenLockStatus('screenLock is off\n')).toEqual({
+      kind: 'never'
+    })
+    expect(parseMacScreenLockStatus('screenLock delay is never\n')).toEqual({
+      kind: 'never'
+    })
+    expect(parseMacScreenLockStatus('screenLock delay is disabled\n')).toEqual({
+      kind: 'never'
+    })
+  })
+
+  it('maps invalid output to unknown', () => {
+    expect(parseMacScreenLockStatus('')).toEqual({ kind: 'unknown' })
+    expect(parseMacScreenLockStatus('aks connection failed\n')).toEqual({
       kind: 'unknown'
     })
   })

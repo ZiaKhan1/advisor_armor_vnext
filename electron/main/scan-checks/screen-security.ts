@@ -110,6 +110,25 @@ export function parseMacScreenLockState(
   return { kind: 'seconds', seconds: delaySeconds }
 }
 
+export function parseMacScreenLockStatus(output: string): ScreenLockState {
+  if (/screenLock delay is immediate/i.test(output)) {
+    return { kind: 'immediately' }
+  }
+
+  const delayMatch = output.match(/screenLock delay is (\d+) seconds?/i)
+  if (delayMatch) {
+    return { kind: 'seconds', seconds: Number.parseInt(delayMatch[1], 10) }
+  }
+
+  // sysadminctl does not provide a documented disabled output string. on one machine, it was never but check
+  // for disabled and off as well.
+  if (/screenLock (?:(?:delay )?is )?(?:disabled|never|off)/i.test(output)) {
+    return { kind: 'never' }
+  }
+
+  return { kind: 'unknown' }
+}
+
 export function parseWindowsScreenLockState(output: string): ScreenLockState {
   const trimmed = output.trim()
 
@@ -161,6 +180,31 @@ async function readMacScreenIdle(): Promise<ScreenIdleState> {
 }
 
 async function readMacScreenLock(): Promise<ScreenLockState> {
+  // First try sysadminctl command which is on never mac os versions
+  const screenLockResult = await runCommand(
+    '/usr/sbin/sysadminctl',
+    ['-screenLock', 'status'],
+    SCREEN_SECURITY_COMMAND_TIMEOUT_MS
+  )
+
+  if (screenLockResult.ok) {
+    // Observed on macOS 15.6.1: the status line is on stderr, while stdout may
+    // contain unrelated aks output. Parse both streams.
+    const state = parseMacScreenLockStatus(
+      `${screenLockResult.stdout}\n${screenLockResult.stderr}`
+    )
+    if (state.kind !== 'unknown') {
+      return state
+    }
+
+    logger.warn('Unable to parse macOS sysadminctl screen lock state', {
+      stdout: screenLockResult.stdout,
+      stderr: screenLockResult.stderr
+    })
+  }
+
+  // Fallback for older systems and managed screen saver payloads that expose
+  // askForPassword and askForPasswordDelay in com.apple.screensaver.
   const askForPasswordResult = await runCommand(
     'defaults',
     ['read', 'com.apple.screensaver', 'askForPassword'],
