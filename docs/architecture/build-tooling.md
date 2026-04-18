@@ -135,30 +135,41 @@ Keep the scripts small and close to standard `electron-vite` usage:
 ```json
 {
   "scripts": {
-    "dev": "electron-vite dev",
-    "build": "electron-vite build",
+    "dev": "node scripts/ensure-native.mjs && electron-vite dev --watch",
+    "build:native": "node scripts/ensure-native.mjs --strict",
+    "build": "npm run build:native && electron-vite build",
     "preview": "electron-vite preview",
-    "package": "electron-vite build && electron-builder --dir",
-    "package:smoke": "electron-builder --dir",
-    "dist": "electron-vite build && electron-builder",
-    "dist:mac:universal": "electron-vite build && electron-builder --mac --universal"
+    "package": "npm run build && electron-builder --dir",
+    "package:smoke": "npm run build:native && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "dist:mac:universal": "npm run build && electron-builder --mac --universal"
   }
 }
 ```
 
 Additional scripts are fine for mock mode, platform-specific packaging, or CI, but the core workflow should stay anchored to these commands.
 
+`scripts/ensure-native.mjs` builds native helper binaries that are required by
+main-process scan checks. It currently builds the macOS Active WiFi helper from
+Swift source when running on macOS and skips native work on other platforms. The
+generated helper binary and Swift module cache stay out of git.
+
 ## Installer Workflow
 
 Use `electron-builder` for packaged app and installer outputs:
 
 - `npm run package` creates an unpacked app bundle through `electron-builder --dir`; this is the fastest packaging smoke test.
-- `npm run package:smoke` runs only `electron-builder --dir` and expects `out/` to already exist; CI uses this after `npm run build`.
+- `npm run package:smoke` runs the native helper preflight and `electron-builder --dir`; it expects `out/` to already exist. CI uses this after `npm run build`.
 - `npm run dist` creates installer artifacts for the current platform.
 - `npm run dist:mac`, `npm run dist:win`, and `npm run dist:linux` create platform-specific artifacts when the build host supports that target.
 - `npm run dist:mac:universal` creates the macOS distribution artifact for both Intel Mac and Apple Silicon.
 
 The installer output directory is `release/`. Local generated artifacts are ignored by git.
+
+macOS packaging includes the generated Active WiFi helper as an extra resource
+under `native/macos/wifi-active/wifi-active`. Release and packaging commands
+must run `npm run build` first so the helper exists before `electron-builder`
+collects resources.
 
 macOS installer output should include a `.dmg` for manual install testing and a `.zip` for future auto-update compatibility. Windows should produce an NSIS installer. Local installer builds are unsigned for now so packaging can be tested without depending on developer certificates or keychain state. Signing, notarization, and publishing should be added later once Apple Developer ID, Windows signing certificate, and GitHub release credentials are available.
 

@@ -300,7 +300,7 @@ function createMockBackend(): BackendApi {
       AutomaticUpdates: 'FAIL',
       IsShowPIIScan: 'NO',
       ScanIntervalHours: 24,
-      ActiveWifiNetwork: 'FAIL',
+      ActiveWifiNetwork: 'NUDGE',
       KnownWifiNetworks: 'FAIL',
       'NW-WPA': 'FAIL',
       'NW-WPA-2': 'FAIL',

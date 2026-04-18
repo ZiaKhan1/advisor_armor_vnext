@@ -21,7 +21,8 @@ const scanCheckMocks = vi.hoisted(() => ({
   readAutomaticUpdates: vi.fn(),
   readRemoteLoginEnabled: vi.fn(),
   readScreenIdle: vi.fn(),
-  readScreenLock: vi.fn()
+  readScreenLock: vi.fn(),
+  readActiveWifiSnapshot: vi.fn()
 }))
 
 vi.mock('node:os', () => osMocks)
@@ -64,6 +65,10 @@ vi.mock('./scan-checks/screen-security', () => ({
   readScreenLock: scanCheckMocks.readScreenLock
 }))
 
+vi.mock('./scan-checks/active-wifi', () => ({
+  readActiveWifiSnapshot: scanCheckMocks.readActiveWifiSnapshot
+}))
+
 const automaticUpdates: AutomaticUpdatesSnapshot = {
   enabled: false,
   checks: [
@@ -93,6 +98,20 @@ describe('readDeviceSnapshot', () => {
       kind: 'seconds',
       seconds: 5
     })
+    scanCheckMocks.readActiveWifiSnapshot.mockResolvedValue({
+      facts: {
+        ssid: 'OfficeNet',
+        security: 'WPA2 Personal',
+        securityRawValue: 4
+      },
+      assessment: {
+        status: 'secure',
+        reason: 'modern-protocol',
+        securityLabel: 'WPA2 Personal',
+        detail:
+          'Current Wi-Fi "OfficeNet" uses a modern security mode: WPA2 Personal.'
+      }
+    })
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -115,6 +134,7 @@ describe('readDeviceSnapshot', () => {
     expect(scanCheckMocks.readRemoteLoginEnabled).toHaveBeenCalledWith('darwin')
     expect(scanCheckMocks.readScreenIdle).toHaveBeenCalledWith('darwin')
     expect(scanCheckMocks.readScreenLock).toHaveBeenCalledWith('darwin')
+    expect(scanCheckMocks.readActiveWifiSnapshot).toHaveBeenCalledWith('darwin')
 
     expect(snapshot).toMatchObject({
       deviceName: 'test-host',
@@ -128,6 +148,32 @@ describe('readDeviceSnapshot', () => {
       automaticUpdates,
       automaticUpdatesEnabled: false,
       remoteLoginEnabled: true,
+      activeWifiSecure: true,
+      activeWifiAssessment: {
+        status: 'secure',
+        reason: 'modern-protocol',
+        securityLabel: 'WPA2 Personal',
+        detail:
+          'Current Wi-Fi "OfficeNet" uses a modern security mode: WPA2 Personal.'
+      },
+      wifiConnections: [
+        {
+          id: 'wifi-1',
+          iface: 'en0',
+          model: 'Built-in',
+          ssid: 'OfficeNet',
+          bssid: '00:00:00:00:00:00',
+          channel: '36',
+          frequency: '5 GHz',
+          type: 'wifi',
+          security: 'WPA2',
+          signalLevel: '-40 dBm',
+          txRate: '866 Mbps',
+          wpaResult: 'FAIL',
+          wpa2Result: 'PASS',
+          wpa3Result: 'FAIL'
+        }
+      ],
       screenIdleState: { kind: 'seconds', seconds: 300 },
       screenIdleSeconds: 300,
       screenLockState: { kind: 'seconds', seconds: 5 },

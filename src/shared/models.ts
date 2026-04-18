@@ -74,6 +74,21 @@ export interface WifiConnection {
   wpa3Result: PolicyStatus
 }
 
+export type WifiSecurityStatus = 'secure' | 'insecure' | 'unknown'
+
+export type WifiSecurityReason =
+  | 'modern-protocol'
+  | 'no-password'
+  | 'weak-protocol'
+  | 'unknown'
+
+export interface ActiveWifiAssessment {
+  status: WifiSecurityStatus
+  reason: WifiSecurityReason
+  securityLabel: string
+  detail: string
+}
+
 export interface AutomaticUpdateCheck {
   key: string
   label: string
@@ -124,6 +139,7 @@ export interface DeviceSnapshot {
   remoteLoginEnabled: boolean | null
   winDefenderEnabled: boolean | null
   activeWifiSecure: boolean | null
+  activeWifiAssessment: ActiveWifiAssessment
   knownWifiSecure: boolean | null
   networkIdInUse: string
   installedApps: string[]

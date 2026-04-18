@@ -480,7 +480,8 @@ function ScanRow({
           item.key === 'automaticUpdates' ||
           item.key === 'remoteLogin' ||
           item.key === 'screenIdle' ||
-          item.key === 'screenLock' ? null : (
+          item.key === 'screenLock' ||
+          item.key === 'activeWifiNetwork' ? null : (
             <>
               <p className="mt-2 font-medium text-slate-800">
                 Recommended action

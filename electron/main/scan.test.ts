@@ -82,6 +82,13 @@ function createDevice(overrides: Partial<DeviceSnapshot> = {}): DeviceSnapshot {
     remoteLoginEnabled: false,
     winDefenderEnabled: null,
     activeWifiSecure: true,
+    activeWifiAssessment: {
+      status: 'secure',
+      reason: 'modern-protocol',
+      securityLabel: 'WPA2 Personal',
+      detail:
+        'Current Wi-Fi "OfficeNet" uses a modern security mode: WPA2 Personal.'
+    },
     knownWifiSecure: true,
     networkIdInUse: '',
     installedApps: [],
