@@ -98,8 +98,92 @@ policy. For example, WPA/WPA2 mixed networks can still show as protected in
 macOS while DeviceWatch classifies them as insecure because they allow older WPA
 security.
 
+## Windows Data Source
+
+Windows active WiFi should initially be read with `netsh wlan show interface`
+through non-interactive PowerShell. The old app already used this path, and it
+normally exposes the active connection's `SSID`, `Authentication`, and `Cipher`
+without elevation.
+
+Recommended command shape:
+
+```powershell
+$h=@{}
+netsh wlan show interface | % {
+  $line = $_.Trim()
+  if ($line -match "(.+?)\s*:\s*(.+)") {
+    $h[$matches[1].Trim()] = $matches[2].Trim()
+  }
+}
+$h | ConvertTo-Json -Depth 3
+```
+
+Recommended parsed facts:
+
+```json
+{
+  "ssid": "Office WiFi",
+  "authentication": "WPA2-Personal",
+  "cipher": "CCMP"
+}
+```
+
+If `netsh` parsing proves unreliable in customer environments, move the Windows
+read layer to a typed helper that calls the Windows WLAN API directly. Keep the
+classification and policy logic in TypeScript.
+
+## Windows Classification
+
+Windows exposes security through authentication and cipher values. Microsoft
+documents these as `DOT11_AUTH_ALGORITHM` and `DOT11_CIPHER_ALGORITHM` in the
+WLAN API. `netsh wlan show interface` presents user-readable versions of the
+same concepts.
+
+| Windows value                                                                                                                  | Classification | User-facing reason                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------ | -------------- | ------------------------------------------------------------------- |
+| Authentication `Open`                                                                                                          | Insecure       | Current WiFi does not require a password.                           |
+| Authentication `OWE`                                                                                                           | Insecure       | Current WiFi uses Enhanced Open, which does not require a password. |
+| Authentication `Shared Key`                                                                                                    | Insecure       | Current WiFi uses outdated WEP security.                            |
+| Authentication containing `WEP`                                                                                                | Insecure       | Current WiFi uses outdated WEP security.                            |
+| Cipher `WEP`, `WEP40`, or `WEP104`                                                                                             | Insecure       | Current WiFi uses outdated WEP security.                            |
+| Authentication `WPA`, `WPA-PSK`, `WPA-Personal`, or `WPA-Enterprise`                                                           | Insecure       | Current WiFi uses outdated WPA security.                            |
+| Cipher `TKIP`                                                                                                                  | Insecure       | Current WiFi uses a weak security mode.                             |
+| Authentication `RSNA`, `RSNA-PSK`, `WPA2-Personal`, or `WPA2-Enterprise` with cipher `CCMP`, `CCMP-256`, `GCMP`, or `GCMP-256` | Secure         | Current WiFi uses WPA2 security.                                    |
+| Authentication `WPA3-SAE`, `WPA3-Personal`, `WPA3-Enterprise`, or `WPA3-Enterprise 192-bit`                                    | Secure         | Current WiFi uses WPA3 security.                                    |
+| Missing, vendor-specific, or unexpected values                                                                                 | Unknown        | Current WiFi security could not be determined.                      |
+
+Windows output labels may vary by OS version, driver, or localization. Matching
+should be case-insensitive and tolerant of common punctuation differences such
+as `WPA2-Personal`, `WPA2 Personal`, and `WPA2PSK`.
+
+## Windows UI Copy Guidance
+
+Use the same high-level reason categories as macOS:
+
+- Secure: `Current WiFi uses a modern security mode: WPA2-Personal / CCMP.`
+- No password: `Current WiFi does not require a password. Use a password-protected WPA2 or WPA3 network.`
+- Enhanced Open: `Current WiFi uses a weak security mode because it does not require a password. Use a password-protected WPA2 or WPA3 network.`
+- WEP: `Current WiFi uses outdated WEP security. Use a WPA2 or WPA3 network.`
+- WPA or TKIP: `Current WiFi uses a weak security mode. Use a WPA2 or WPA3 network.`
+- Unknown: `Current WiFi security could not be determined.`
+
+For a secure active connection, show a short instruction:
+
+`You can see your current WiFi connection by opening WiFi in Settings.`
+
+For a non-secure active connection, use detailed remediation steps:
+
+1. Open `WiFi` in Settings.
+2. Click `Show available networks`.
+3. Click `Disconnect` to disconnect the current WiFi network.
+4. Connect to a secure WiFi network:
+   - Select a password-protected WPA2 or WPA3 network from the available WiFi networks list.
+   - Enter the network password if prompted.
+   - Click `Connect`.
+
 ## Implementation Rule
 
 The Swift helper must not emit PASS, NUDGE, or FAIL. It should emit only
-observed WiFi facts. The scan layer maps those facts to secure, insecure, or
-unknown, and then applies `ActiveWifiNetwork` policy.
+observed WiFi facts. The Windows read layer follows the same rule. The scan
+layer maps observed facts to secure, insecure, or unknown, and then applies
+`ActiveWifiNetwork` policy.
