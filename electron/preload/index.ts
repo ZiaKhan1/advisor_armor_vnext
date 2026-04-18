@@ -30,7 +30,8 @@ const api: DeviceWatchApi = {
     ipcRenderer.invoke(ipcChannels.openDiskEncryptionSettings),
   openAppStore: () => ipcRenderer.invoke(ipcChannels.openAppStore),
   openRemoteLoginSettings: () =>
-    ipcRenderer.invoke(ipcChannels.openRemoteLoginSettings)
+    ipcRenderer.invoke(ipcChannels.openRemoteLoginSettings),
+  openWifiSettings: () => ipcRenderer.invoke(ipcChannels.openWifiSettings)
 }
 
 contextBridge.exposeInMainWorld('deviceWatch', api)

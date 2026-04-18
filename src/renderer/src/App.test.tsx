@@ -164,7 +164,8 @@ function installDeviceWatch(state: RendererState): DeviceWatchApi {
     openFirewallSettings: async () => undefined,
     openDiskEncryptionSettings: async () => undefined,
     openAppStore: async () => undefined,
-    openRemoteLoginSettings: async () => undefined
+    openRemoteLoginSettings: async () => undefined,
+    openWifiSettings: async () => undefined
   }
   window.deviceWatch = api
   return api

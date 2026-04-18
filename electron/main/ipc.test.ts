@@ -29,7 +29,8 @@ function createController() {
     openFirewallSettings: vi.fn(),
     openDiskEncryptionSettings: vi.fn(),
     openAppStore: vi.fn(),
-    openRemoteLoginSettings: vi.fn()
+    openRemoteLoginSettings: vi.fn(),
+    openWifiSettings: vi.fn()
   }
 }
 
@@ -66,7 +67,8 @@ describe('registerIpc', () => {
         ipcChannels.openFirewallSettings,
         ipcChannels.openDiskEncryptionSettings,
         ipcChannels.openAppStore,
-        ipcChannels.openRemoteLoginSettings
+        ipcChannels.openRemoteLoginSettings,
+        ipcChannels.openWifiSettings
       ]
     )
   })
@@ -89,6 +91,7 @@ describe('registerIpc', () => {
     await getHandler(ipcChannels.openDiskEncryptionSettings)()
     await getHandler(ipcChannels.openAppStore)()
     await getHandler(ipcChannels.openRemoteLoginSettings)()
+    await getHandler(ipcChannels.openWifiSettings)()
 
     expect(controller.getState).toHaveBeenCalledOnce()
     expect(controller.submitEmail).toHaveBeenCalledWith('user@example.com')
@@ -102,5 +105,6 @@ describe('registerIpc', () => {
     expect(controller.openDiskEncryptionSettings).toHaveBeenCalledOnce()
     expect(controller.openAppStore).toHaveBeenCalledOnce()
     expect(controller.openRemoteLoginSettings).toHaveBeenCalledOnce()
+    expect(controller.openWifiSettings).toHaveBeenCalledOnce()
   })
 })

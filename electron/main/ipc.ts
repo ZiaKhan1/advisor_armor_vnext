@@ -35,4 +35,7 @@ export function registerIpc(controller: AppController): void {
   ipcMain.handle(ipcChannels.openRemoteLoginSettings, () =>
     controller.openRemoteLoginSettings()
   )
+  ipcMain.handle(ipcChannels.openWifiSettings, () =>
+    controller.openWifiSettings()
+  )
 }

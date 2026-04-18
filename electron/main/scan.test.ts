@@ -300,8 +300,7 @@ describe('evaluateDevice active Wi-Fi result', () => {
         {
           text: 'Choose ',
           linkText: 'Wi-Fi',
-          linkUrl:
-            'x-apple.systempreferences:com.apple.wifi-settings-extension',
+          action: 'openWifiSettings',
           suffix:
             ' to see your current Wi-Fi connection and other available networks.'
         },
@@ -358,7 +357,7 @@ describe('evaluateDevice active Wi-Fi result', () => {
         {
           text: 'Open ',
           linkText: 'Wi-Fi',
-          linkUrl: 'ms-settings:network-wifi',
+          action: 'openWifiSettings',
           suffix: ' in Settings.'
         },
         { text: 'Click Show available networks.' },
@@ -404,8 +403,7 @@ describe('evaluateDevice active Wi-Fi result', () => {
         {
           text: 'Choose ',
           linkText: 'Wi-Fi',
-          linkUrl:
-            'x-apple.systempreferences:com.apple.wifi-settings-extension',
+          action: 'openWifiSettings',
           suffix:
             ' to see your current Wi-Fi connection and other available networks.'
         },

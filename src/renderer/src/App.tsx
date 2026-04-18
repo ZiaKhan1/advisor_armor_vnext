@@ -535,6 +535,10 @@ function DescriptionStep({
                 void window.deviceWatch.openAppStore()
                 return
               }
+              if (step.action === 'openWifiSettings') {
+                void window.deviceWatch.openWifiSettings()
+                return
+              }
               void window.deviceWatch.openRemoteLoginSettings()
             }}
           >
