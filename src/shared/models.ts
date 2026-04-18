@@ -183,7 +183,6 @@ export interface ScanElementDescriptionStep {
     | 'openDiskEncryptionSettings'
     | 'openAppStore'
     | 'openRemoteLoginSettings'
-    | 'openWifiSettings'
   suffix?: string
   note?: string
   status?: PolicyStatus

@@ -337,36 +337,6 @@ export class AppController extends EventEmitter {
     )
   }
 
-  async openWifiSettings(): Promise<void> {
-    if (process.platform === 'win32') {
-      const child = spawn(
-        'cmd.exe',
-        ['/c', 'start', '', 'ms-settings:network-wifi'],
-        {
-          detached: true,
-          stdio: 'ignore',
-          windowsHide: true
-        }
-      )
-      child.on('error', (error) => {
-        logger.error('Opening Wi-Fi settings failed', error)
-      })
-      child.unref()
-      return
-    }
-
-    if (process.platform === 'darwin') {
-      await shell.openExternal(
-        'x-apple.systempreferences:com.apple.wifi-settings-extension'
-      )
-      return
-    }
-
-    logger.warn('Opening Wi-Fi settings is not supported on this platform', {
-      platform: process.platform
-    })
-  }
-
   async checkForUpdates(): Promise<void> {
     await this.updateService.checkForUpdates()
   }

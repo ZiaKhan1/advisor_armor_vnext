@@ -22,7 +22,6 @@ export interface DeviceWatchApi {
   openDiskEncryptionSettings: () => Promise<void>
   openAppStore: () => Promise<void>
   openRemoteLoginSettings: () => Promise<void>
-  openWifiSettings: () => Promise<void>
 }
 
 export const ipcChannels = {
@@ -38,6 +37,5 @@ export const ipcChannels = {
   openDiskEncryptionSettings: 'system:open-disk-encryption-settings',
   openAppStore: 'system:open-app-store',
   openRemoteLoginSettings: 'system:open-remote-login-settings',
-  openWifiSettings: 'system:open-wifi-settings',
   stateChanged: 'app:state-changed'
 } as const

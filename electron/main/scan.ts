@@ -748,7 +748,7 @@ function getActiveWifiDescriptionSteps(
       {
         text: 'Choose ',
         linkText: 'Wi-Fi',
-        action: 'openWifiSettings',
+        linkUrl: 'x-apple.systempreferences:com.apple.wifi-settings-extension',
         suffix:
           ' to see your current Wi-Fi connection and other available networks.'
       }
@@ -793,7 +793,7 @@ function getActiveWifiDescriptionSteps(
         {
           text: 'Open ',
           linkText: 'Wi-Fi',
-          action: 'openWifiSettings',
+          linkUrl: 'ms-settings:network-wifi',
           suffix: ' in Settings to see your current Wi-Fi connection.'
         },
         {
@@ -806,7 +806,7 @@ function getActiveWifiDescriptionSteps(
       {
         text: 'Open ',
         linkText: 'Wi-Fi',
-        action: 'openWifiSettings',
+        linkUrl: 'ms-settings:network-wifi',
         suffix: ' in Settings.'
       },
       { text: 'Click Show available networks.' },
