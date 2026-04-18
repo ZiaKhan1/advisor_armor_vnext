@@ -117,6 +117,24 @@ function createResultsState(
             fixInstruction: 'Enable the firewall in system settings.'
           }),
           createScanElement({
+            key: 'screenIdle',
+            title: 'Screen Idle',
+            status: PASS,
+            detail: 'Company policy: 15 minutes. Your setting: 15 minutes.',
+            description:
+              'Screens which lock automatically when your laptop is unattended help prevent unauthorized access.',
+            descriptionSteps: [
+              {
+                text: 'Open ',
+                linkText: 'Lock Screen',
+                linkUrl: 'x-apple.systempreferences:com.apple.Lock',
+                suffix: ' on the left.'
+              }
+            ],
+            fixInstruction:
+              'Open System Settings > Lock Screen and reduce the screen saver idle timeout.'
+          }),
+          createScanElement({
             key: 'applications',
             title: 'Applications',
             status: NUDGE,
@@ -145,7 +163,8 @@ function installDeviceWatch(state: RendererState): DeviceWatchApi {
     openTroubleshooting: async () => undefined,
     openFirewallSettings: async () => undefined,
     openDiskEncryptionSettings: async () => undefined,
-    openAppStore: async () => undefined
+    openAppStore: async () => undefined,
+    openRemoteLoginSettings: async () => undefined
   }
   window.deviceWatch = api
   return api
@@ -216,6 +235,25 @@ it('expands and collapses scan row details', async () => {
   await user.click(firewallRow)
 
   expect(screen.queryByText('Recommended action')).not.toBeInTheDocument()
+})
+
+it('opens Screen Idle details without the recommended action footer', async () => {
+  const user = userEvent.setup()
+  installDeviceWatch(createResultsState())
+
+  render(<App />)
+
+  const screenIdleRow = await screen.findByRole('button', {
+    name: /screen idle/i
+  })
+
+  await user.click(screenIdleRow)
+
+  expect(screen.queryByText('Recommended action')).not.toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Lock Screen' })).toHaveAttribute(
+    'href',
+    'x-apple.systempreferences:com.apple.Lock'
+  )
 })
 
 it('shows recommended action for non-firewall scan rows', async () => {

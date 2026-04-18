@@ -304,6 +304,39 @@ export class AppController extends EventEmitter {
     })
   }
 
+  async openRemoteLoginSettings(): Promise<void> {
+    if (process.platform === 'win32') {
+      const child = spawn(
+        'cmd.exe',
+        ['/c', 'start', '', 'SystemPropertiesRemote.exe'],
+        {
+          detached: true,
+          stdio: 'ignore',
+          windowsHide: true
+        }
+      )
+      child.on('error', (error) => {
+        logger.error('Opening remote login settings failed', error)
+      })
+      child.unref()
+      return
+    }
+
+    if (process.platform === 'darwin') {
+      await shell.openExternal(
+        'x-apple.systempreferences:com.apple.preferences.sharing?Services_RemoteLogin'
+      )
+      return
+    }
+
+    logger.warn(
+      'Opening remote login settings is not supported on this platform',
+      {
+        platform: process.platform
+      }
+    )
+  }
+
   async checkForUpdates(): Promise<void> {
     await this.updateService.checkForUpdates()
   }

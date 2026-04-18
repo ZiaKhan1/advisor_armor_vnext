@@ -44,4 +44,46 @@ describe('parsePolicyResponse', () => {
     expect(parsed.scanIntervalHours).toBe(12)
     expect(parsed.appsPolicy.prohibitedApps).toEqual(['ChatGPT'])
   })
+
+  it('normalizes macOS screen idle policy thresholds', () => {
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenIdleMac: 300 } }, true)
+        .screenIdle.mac
+    ).toBe(300)
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenIdleMac: '300' } }, true)
+        .screenIdle.mac
+    ).toBe(300)
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenIdleMac: 0 } }, true)
+        .screenIdle.mac
+    ).toBeNull()
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenIdleMac: -1 } }, true)
+        .screenIdle.mac
+    ).toBeNull()
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenIdleMac: 'abc' } }, true)
+        .screenIdle.mac
+    ).toBeNull()
+  })
+
+  it('normalizes Windows screen lock policy values', () => {
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenLockWindows: 1 } }, false)
+        .screenLock.win
+    ).toBe(1)
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenLockWindows: '0' } }, false)
+        .screenLock.win
+    ).toBe(0)
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenLockWindows: 2 } }, false)
+        .screenLock.win
+    ).toBeNull()
+    expect(
+      parsePolicyResponse({ systemPolicy: { ScreenLockWindows: 'abc' } }, false)
+        .screenLock.win
+    ).toBeNull()
+  })
 })

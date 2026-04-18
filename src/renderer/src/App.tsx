@@ -477,7 +477,10 @@ function ScanRow({
           ) : null}
           {item.key === 'firewall' ||
           item.key === 'diskEncryption' ||
-          item.key === 'automaticUpdates' ? null : (
+          item.key === 'automaticUpdates' ||
+          item.key === 'remoteLogin' ||
+          item.key === 'screenIdle' ||
+          item.key === 'screenLock' ? null : (
             <>
               <p className="mt-2 font-medium text-slate-800">
                 Recommended action
@@ -527,7 +530,11 @@ function DescriptionStep({
                 void window.deviceWatch.openDiskEncryptionSettings()
                 return
               }
-              void window.deviceWatch.openAppStore()
+              if (step.action === 'openAppStore') {
+                void window.deviceWatch.openAppStore()
+                return
+              }
+              void window.deviceWatch.openRemoteLoginSettings()
             }}
           >
             {step.linkText}
@@ -535,12 +542,17 @@ function DescriptionStep({
         ) : null}
         {step.suffix}
       </span>
+      {step.note ? (
+        <ul className="mt-1 list-disc pl-5 text-slate-500">
+          <li>{step.note}</li>
+        </ul>
+      ) : null}
       {step.children && step.children.length > 0 ? (
-        <ol className="mt-2 list-decimal space-y-2 pl-5">
+        <ul className="mt-2 list-disc space-y-2 pl-5">
           {step.children.map((child, index) => (
             <DescriptionStep key={`${child.text}-${index}`} step={child} />
           ))}
-        </ol>
+        </ul>
       ) : null}
     </li>
   )

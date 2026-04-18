@@ -32,4 +32,7 @@ export function registerIpc(controller: AppController): void {
     controller.openDiskEncryptionSettings()
   )
   ipcMain.handle(ipcChannels.openAppStore, () => controller.openAppStore())
+  ipcMain.handle(ipcChannels.openRemoteLoginSettings, () =>
+    controller.openRemoteLoginSettings()
+  )
 }

@@ -87,6 +87,19 @@ export interface AutomaticUpdatesSnapshot {
   tahoeOrLater: boolean | null
 }
 
+export type ScreenIdleState =
+  | { kind: 'seconds'; seconds: number }
+  | { kind: 'never' }
+  | { kind: 'unknown' }
+
+export type ScreenLockState =
+  | { kind: 'immediately' }
+  | { kind: 'seconds'; seconds: number }
+  | { kind: 'never' }
+  | { kind: 'required' }
+  | { kind: 'notRequired' }
+  | { kind: 'unknown' }
+
 export type DiskEncryptionState =
   | 'enabled'
   | 'disabled'
@@ -115,7 +128,9 @@ export interface DeviceSnapshot {
   networkIdInUse: string
   installedApps: string[]
   wifiConnections: WifiConnection[]
+  screenIdleState: ScreenIdleState
   screenIdleSeconds: number | null
+  screenLockState: ScreenLockState
   screenLockSeconds: number | null
 }
 
@@ -151,7 +166,9 @@ export interface ScanElementDescriptionStep {
     | 'openFirewallSettings'
     | 'openDiskEncryptionSettings'
     | 'openAppStore'
+    | 'openRemoteLoginSettings'
   suffix?: string
+  note?: string
   status?: PolicyStatus
   children?: ScanElementDescriptionStep[]
 }
