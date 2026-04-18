@@ -120,8 +120,19 @@ export function parseMacScreenLockStatus(output: string): ScreenLockState {
     return { kind: 'seconds', seconds: Number.parseInt(delayMatch[1], 10) }
   }
 
-  // sysadminctl does not provide a documented disabled output string. on one machine, it was never but check
-  // for disabled and off as well.
+  // On one machine, when setting was set to "Never", the "sysadminctl -screenLock status" returned  "screenLock is off".
+  // However, sysadminctl does not document this behavior, so we are checking defensively.
+
+  // Reutrn true when output contains one of these case-insensitive substrings:
+  // screenLock disabled
+  // screenLock never
+  // screenLock off
+  // screenLock is disabled
+  // screenLock is never
+  // screenLock is off
+  // screenLock delay is disabled
+  // screenLock delay is never
+  // screenLock delay is off
   if (/screenLock (?:(?:delay )?is )?(?:disabled|never|off)/i.test(output)) {
     return { kind: 'never' }
   }
