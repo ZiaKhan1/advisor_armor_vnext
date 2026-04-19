@@ -37,14 +37,14 @@ Responsible for:
 
 ## Platform Differences
 
-| Concern             | Mac                              | Windows                  |
-| ------------------- | -------------------------------- | ------------------------ |
-| Tray presence       | Menu bar icon                    | System tray icon         |
-| Firewall check      | `socketfilterfw` / `pfctl`       | Windows Firewall API     |
-| Disk encryption     | FileVault (`fdesetup`)           | BitLocker (`manage-bde`) |
-| Auto-updates check  | Software Update preference       | Windows Update settings  |
-| Screen saver idle   | `com.apple.screensaver` defaults | Registry / Group Policy  |
-| Auto-start on login | Electron login item API          | Electron login item API  |
+| Concern             | Mac                              | Windows                                       |
+| ------------------- | -------------------------------- | --------------------------------------------- |
+| Tray presence       | Menu bar icon                    | System tray icon                              |
+| Firewall check      | `socketfilterfw`                 | PowerShell `Get-NetFirewallProfile`           |
+| Disk encryption     | FileVault (`fdesetup`)           | Shell COM `System.Volume.BitLockerProtection` |
+| Auto-updates check  | Software Update preference       | Windows Update settings                       |
+| Screen saver idle   | `com.apple.screensaver` defaults | Registry / Group Policy                       |
+| Auto-start on login | Electron login item API          | Electron login item API                       |
 
 ## Auto-Start
 

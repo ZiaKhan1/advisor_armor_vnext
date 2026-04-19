@@ -1100,7 +1100,7 @@ function describeFirewallState(
     }
 
     if (status === FAIL) {
-      return "The macOS firewall is turned off. This device does not meet your organisation's firewall policy."
+      return 'The macOS firewall is turned off.'
     }
 
     return 'The macOS firewall is turned off. Enabling it helps protect this device from unwanted network connections, especially on public or unsecured Wi-Fi networks.'
@@ -1112,7 +1112,7 @@ function describeFirewallState(
     }
 
     if (status === FAIL) {
-      return "One or more Windows Defender Firewall profiles appear to be turned off. This device does not meet your organisation's firewall policy."
+      return 'One or more Windows Defender Firewall profiles appear to be turned off.'
     }
 
     return 'One or more Windows Defender Firewall profiles appear to be turned off. The firewall helps protect this device from unwanted network connections, especially on public or unsecured networks.'

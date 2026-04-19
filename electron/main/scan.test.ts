@@ -177,7 +177,7 @@ describe('evaluateDevice firewall result', () => {
     expect(firewall).toMatchObject({
       status: FAIL,
       detail:
-        "One or more Windows Defender Firewall profiles appear to be turned off. This device does not meet your organisation's firewall policy.",
+        'One or more Windows Defender Firewall profiles appear to be turned off.',
       descriptionSteps: [
         {
           text: 'Open ',

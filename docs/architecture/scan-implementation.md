@@ -122,8 +122,8 @@ const isMac = platform() === 'darwin'
 const isWindows = platform() === 'win32'
 ```
 
-Mac checks use shell commands (`defaults read`, `fdesetup`, `socketfilterfw`, `system_profiler`, etc.).
-Windows checks use PowerShell (`Get-NetFirewallProfile`, `Get-BitLockerVolume`, `Get-MpComputerStatus`, etc.), registry queries (`reg query`), or `netsh` for WiFi.
+Mac checks use shell commands (`defaults read`, `fdesetup`, `socketfilterfw`, `netstat`, `system_profiler`, etc.).
+Windows checks use PowerShell (`Get-NetFirewallProfile`, Shell COM properties, `Get-MpComputerStatus`, etc.), registry queries, or `netsh` for WiFi.
 
 ## Disk Encryption / BitLocker
 

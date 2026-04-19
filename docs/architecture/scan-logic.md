@@ -44,7 +44,7 @@ created: 2026-04-05
 ### 4. Remote Login
 
 - **Policy field:** `RemoteLoginMacNudge` (Mac), `RemoteLoginWindowsNudge` (Windows)
-- **Check:** Is remote login / SSH enabled? TBD — exact check to be defined at implementation
+- **Check:** Is remote login enabled? macOS checks for SSH/Telnet listener state with `netstat -anv`; Windows checks Remote Desktop via the `fDenyTSConnections` registry value.
 - **Result:** Standard PASS/FAIL/NUDGE logic
 - **Platforms:** Mac, Windows
 
