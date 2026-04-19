@@ -2,6 +2,7 @@ import { hostname, machine, platform, release } from 'node:os'
 import type {
   DeviceSnapshot,
   ActiveWifiAssessment,
+  KnownWifiAssessment,
   NormalizedPolicy,
   ScanElementDescriptionStep,
   ScanElementResult,
@@ -21,6 +22,7 @@ import { readFirewallEnabled } from './scan-checks/firewall'
 import { readRemoteLoginEnabled } from './scan-checks/remote-login'
 import { readScreenIdle, readScreenLock } from './scan-checks/screen-security'
 import { readActiveWifiSnapshot } from './scan-checks/active-wifi'
+import { readKnownWifiSnapshot } from './scan-checks/known-wifi'
 
 const FIREWALL_DESCRIPTION =
   'Firewalls control network traffic into and out of a system. Enabling the firewall on your device can prevent network-based attacks on your system and is especially important if you make use of unsecured wireless networks (such as at coffee shops and airports).'
@@ -44,6 +46,8 @@ const WINDOWS_SCREEN_LOCK_RATIONALE =
   'Requiring logon on resume reduces the chance of someone accessing your Windows device while it is unattended.'
 const ACTIVE_WIFI_DESCRIPTION =
   'Use password-protected WPA2 or WPA3 Wi-Fi networks when available. Open, WEP, WPA, mixed legacy, and no-password networks expose the device to avoidable network risk.'
+const KNOWN_WIFI_DESCRIPTION =
+  'Saved Wi-Fi networks can be reused later by the device. Remove saved networks that do not require a password or that use outdated Wi-Fi security.'
 
 async function resolvePublicIp(): Promise<string> {
   for (const url of [
@@ -73,6 +77,7 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
   const screenIdleState = await readScreenIdle(currentPlatform)
   const screenLockState = await readScreenLock(currentPlatform)
   const activeWifi = await readActiveWifiSnapshot(currentPlatform)
+  const knownWifi = await readKnownWifiSnapshot(currentPlatform)
 
   const wifiConnections: WifiConnection[] = [
     {
@@ -114,7 +119,11 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
         ? null
         : activeWifi.assessment.status === 'secure',
     activeWifiAssessment: activeWifi.assessment,
-    knownWifiSecure: true,
+    knownWifiSecure:
+      knownWifi.assessment.status === 'unknown'
+        ? null
+        : knownWifi.assessment.status === 'secure',
+    knownWifiAssessment: knownWifi.assessment,
     networkIdInUse: publicIp,
     installedApps:
       currentPlatform === 'darwin' ? ['Safari'] : ['Microsoft Defender'],
@@ -432,10 +441,10 @@ export function evaluateDevice(
       'knownWifiNetworks',
       'Known Wi-Fi Networks',
       knownWifiNetworks,
-      device.knownWifiSecure
-        ? 'Known Wi-Fi profiles appear secure.'
-        : 'Known Wi-Fi profiles may include insecure networks.',
-      'Remove insecure saved Wi-Fi networks.'
+      describeKnownWifiState(device.knownWifiAssessment),
+      recommendKnownWifiAction(device.knownWifiAssessment),
+      KNOWN_WIFI_DESCRIPTION,
+      getKnownWifiDescriptionSteps(device.platform, device.knownWifiAssessment)
     ),
     buildElement(
       'networkId',
@@ -793,7 +802,7 @@ function getActiveWifiDescriptionSteps(
         {
           text: 'Open ',
           linkText: 'Wi-Fi',
-          linkUrl: 'ms-settings:network-wifi',
+          action: 'openWifiSettings',
           suffix: ' in Settings to see your current Wi-Fi connection.'
         },
         {
@@ -806,7 +815,7 @@ function getActiveWifiDescriptionSteps(
       {
         text: 'Open ',
         linkText: 'Wi-Fi',
-        linkUrl: 'ms-settings:network-wifi',
+        action: 'openWifiSettings',
         suffix: ' in Settings.'
       },
       { text: 'Click Show available networks.' },
@@ -827,6 +836,105 @@ function getActiveWifiDescriptionSteps(
   return [
     {
       text: 'Open device Wi-Fi settings and use a password-protected WPA2 or WPA3 network.'
+    }
+  ]
+}
+
+function getKnownWifiDescriptionSteps(
+  currentPlatform: string,
+  assessment: KnownWifiAssessment
+): ScanElementDescriptionStep[] {
+  const insecureNetworkSteps = [...assessment.insecureNetworks]
+    .sort((left, right) =>
+      left.ssid.localeCompare(right.ssid, undefined, { sensitivity: 'base' })
+    )
+    .map((network) => ({
+      text: `${network.ssid} - ${network.securityLabel} - ${network.reasonText}`
+    }))
+
+  if (currentPlatform === 'darwin') {
+    const steps: ScanElementDescriptionStep[] = [
+      { text: 'Choose System Settings from the Apple menu.' },
+      {
+        text: 'Select ',
+        linkText: 'Wi-Fi',
+        linkUrl: 'x-apple.systempreferences:com.apple.wifi-settings-extension',
+        suffix: ' from the sidebar.'
+      },
+      {
+        text: 'Click Advanced to see saved Wi-Fi networks known to this device.'
+      }
+    ]
+
+    if (assessment.insecureNetworks.length === 0) {
+      return steps
+    }
+
+    steps.push(
+      {
+        text: 'Remove each insecure saved Wi-Fi network using these steps:',
+        children: [
+          {
+            text: 'Click the circle with three dots next to the network name.'
+          },
+          { text: 'Click Remove from List.' },
+          { text: 'Click Remove or Forget if prompted.' }
+        ]
+      },
+      {
+        text: 'List of insecure saved Wi-Fi networks:',
+        unnumbered: true,
+        bold: true,
+        children: insecureNetworkSteps
+      }
+    )
+
+    return steps
+  }
+
+  if (currentPlatform === 'win32') {
+    const steps: ScanElementDescriptionStep[] = [
+      {
+        text: 'Open ',
+        linkText: 'Wi-Fi',
+        action: 'openWifiSettings',
+        suffix: ' in Settings.'
+      },
+      { text: 'Click Manage known networks.' }
+    ]
+
+    if (assessment.insecureNetworks.length === 0) {
+      return steps
+    }
+
+    steps.push(
+      {
+        text: 'Remove each insecure saved Wi-Fi network using these steps:',
+        children: [{ text: 'Select the network.' }, { text: 'Click Forget.' }]
+      },
+      {
+        text: 'List of insecure saved Wi-Fi networks:',
+        unnumbered: true,
+        bold: true,
+        children: insecureNetworkSteps
+      }
+    )
+
+    return steps
+  }
+
+  if (assessment.insecureNetworks.length === 0) {
+    return [
+      {
+        text: 'Open device Wi-Fi settings and review saved Wi-Fi networks.'
+      }
+    ]
+  }
+
+  return [
+    {
+      text: 'Open device Wi-Fi settings and remove these insecure saved networks:',
+      children: insecureNetworkSteps
     }
   ]
 }
@@ -1093,6 +1201,22 @@ function describeActiveWifiState(assessment: ActiveWifiAssessment): string {
   }
 
   return `${assessment.detail} Use a WPA2 or WPA3 network.`
+}
+
+function describeKnownWifiState(assessment: KnownWifiAssessment): string {
+  return assessment.detail
+}
+
+function recommendKnownWifiAction(assessment: KnownWifiAssessment): string {
+  if (assessment.status === 'secure') {
+    return 'No action required.'
+  }
+
+  if (assessment.status === 'unknown') {
+    return 'Open Wi-Fi settings and review saved networks if needed.'
+  }
+
+  return 'Remove the insecure saved Wi-Fi networks listed above.'
 }
 
 function describeScreenIdleState(

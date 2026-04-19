@@ -136,7 +136,7 @@ created: 2026-04-05
   - Secure WiFi → **PASS**
   - Insecure WiFi → apply standard PASS/FAIL/NUDGE logic from `ActiveWifiNetwork`
   - Unknown / cannot determine → **PASS** (do not penalise user when the app cannot determine state)
-- **Implementation detail:** Mac reads current WiFi facts from a Swift/CoreWLAN helper. The helper reports facts only; TypeScript classifies security and applies policy.
+- **Implementation detail:** Mac reads current WiFi facts from a Swift/CoreWLAN helper. Windows reads current WiFi facts from `netsh`. The platform read layers report facts only; TypeScript classifies security and applies policy.
 - **Platforms:** Mac, Windows
 
 ### 12. Known WiFi Networks
@@ -144,8 +144,12 @@ created: 2026-04-05
 - **Policy field:** `KnownWifiNetworks`
 - **Valid policy values:** PASS/FAIL/NUDGE (case-insensitive). Anything else → treat as PASS
 - **Check:** Are any saved/known WiFi networks on the device using an insecure protocol?
-- **Result:** Standard PASS/FAIL/NUDGE logic
-- **Implementation detail:** TBD
+- **Security classification:** See `docs/architecture/wifi-security-classification.md`
+- **Result logic:**
+  - No insecure saved networks found → **PASS**
+  - One or more insecure saved networks found → apply standard PASS/FAIL/NUDGE logic from `KnownWifiNetworks`
+  - Unknown / cannot determine → **PASS** (do not penalise user when the app cannot determine state)
+- **Implementation detail:** Mac reads saved WiFi profile facts from a Swift/CoreWLAN helper. Windows reads saved WiFi profile facts from `netsh`. The platform read layers report facts only; TypeScript classifies security and applies policy.
 - **Platforms:** Mac, Windows
 
 ### Not implemented (fields present in API response but ignored)

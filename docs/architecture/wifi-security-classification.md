@@ -304,6 +304,7 @@ When insecure networks are found, list the saved SSIDs with reasons, for
 example:
 
 ```text
+List of insecure saved WiFi networks:
 Cafe Guest - does not require a password
 Library WiFi - encrypts WiFi traffic but does not require a password
 Old Router - uses outdated WPA security
@@ -314,7 +315,7 @@ macOS remediation steps:
 1. Choose `System Settings` from the Apple menu.
 2. Select `WiFi` from the sidebar.
 3. Click `Advanced` to see the WiFi networks known to your device.
-4. Remove each insecure saved network listed below:
+4. Remove each insecure saved network using these steps:
    - Click the more button next to the network name.
    - Click `Remove from List`.
    - Click `Remove` or `Forget` if prompted.
@@ -323,8 +324,9 @@ Windows remediation steps:
 
 1. Open `WiFi` in Settings.
 2. Click `Manage known networks` to see the networks known to this system.
-3. Select each insecure saved network listed below.
-4. Click `Forget`.
+3. Remove each insecure saved network using these steps:
+   - Select the network.
+   - Click `Forget`.
 
 ## Implementation Rule
 

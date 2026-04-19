@@ -150,9 +150,10 @@ Keep the scripts small and close to standard `electron-vite` usage:
 Additional scripts are fine for mock mode, platform-specific packaging, or CI, but the core workflow should stay anchored to these commands.
 
 `scripts/ensure-native.mjs` builds native helper binaries that are required by
-main-process scan checks. It currently builds the macOS Active WiFi helper from
-Swift source when running on macOS and skips native work on other platforms. The
-generated helper binary and Swift module cache stay out of git.
+main-process scan checks. It currently builds the macOS Active WiFi and Known
+WiFi helpers from Swift source when running on macOS and skips native work on
+other platforms. The generated helper binaries and Swift module caches stay out
+of git.
 
 ## Installer Workflow
 
@@ -166,10 +167,11 @@ Use `electron-builder` for packaged app and installer outputs:
 
 The installer output directory is `release/`. Local generated artifacts are ignored by git.
 
-macOS packaging includes the generated Active WiFi helper as an extra resource
-under `native/macos/wifi-active/wifi-active`. Release and packaging commands
-must run `npm run build` first so the helper exists before `electron-builder`
-collects resources.
+macOS packaging includes the generated Active WiFi and Known WiFi helpers as
+extra resources under `native/macos/wifi-active/wifi-active` and
+`native/macos/wifi-known/wifi-known`. Release and packaging commands must run
+`npm run build` first so the helpers exist before `electron-builder` collects
+resources.
 
 macOS installer output should include a `.dmg` for manual install testing and a `.zip` for future auto-update compatibility. Windows should produce an NSIS installer. Local installer builds are unsigned for now so packaging can be tested without depending on developer certificates or keychain state. Signing, notarization, and publishing should be added later once Apple Developer ID, Windows signing certificate, and GitHub release credentials are available.
 

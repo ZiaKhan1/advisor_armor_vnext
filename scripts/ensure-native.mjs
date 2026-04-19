@@ -11,16 +11,16 @@ async function main() {
     return
   }
 
-  await ensureMacWifiHelper()
+  await Promise.all([
+    ensureMacSwiftHelper('wifi-active'),
+    ensureMacSwiftHelper('wifi-known')
+  ])
 }
 
-async function ensureMacWifiHelper() {
-  const source = resolve(root, 'native/macos/wifi-active/main.swift')
-  const output = resolve(root, 'native/macos/wifi-active/dist/wifi-active')
-  const moduleCache = resolve(
-    root,
-    'native/macos/wifi-active/.build/module-cache'
-  )
+async function ensureMacSwiftHelper(name) {
+  const source = resolve(root, `native/macos/${name}/main.swift`)
+  const output = resolve(root, `native/macos/${name}/dist/${name}`)
+  const moduleCache = resolve(root, `native/macos/${name}/.build/module-cache`)
 
   if (!(await isStale(source, output))) {
     return

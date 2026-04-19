@@ -5,8 +5,8 @@ playwright-report
 test-results
 coverage
 dist
-native/macos/wifi-active/dist
-native/macos/wifi-active/.build
+native/macos/*/dist
+native/macos/*/.build
 .DS_Store
 Thumbs.db
 *.log

@@ -85,8 +85,27 @@ export type WifiSecurityReason =
 export interface ActiveWifiAssessment {
   status: WifiSecurityStatus
   reason: WifiSecurityReason
+  reasonText: string
   securityLabel: string
   detail: string
+}
+
+export type WifiSecurityAssessment = ActiveWifiAssessment
+
+export interface KnownWifiNetworkAssessment {
+  ssid: string
+  profileName?: string
+  status: WifiSecurityStatus
+  reason: WifiSecurityReason
+  reasonText: string
+  securityLabel: string
+}
+
+export interface KnownWifiAssessment {
+  status: WifiSecurityStatus
+  detail: string
+  networkCount: number
+  insecureNetworks: KnownWifiNetworkAssessment[]
 }
 
 export interface AutomaticUpdateCheck {
@@ -141,6 +160,7 @@ export interface DeviceSnapshot {
   activeWifiSecure: boolean | null
   activeWifiAssessment: ActiveWifiAssessment
   knownWifiSecure: boolean | null
+  knownWifiAssessment: KnownWifiAssessment
   networkIdInUse: string
   installedApps: string[]
   wifiConnections: WifiConnection[]
@@ -176,12 +196,15 @@ export interface ScanElementResult {
 
 export interface ScanElementDescriptionStep {
   text: string
+  unnumbered?: boolean
+  bold?: boolean
   linkText?: string
   linkUrl?: string
   action?:
     | 'openFirewallSettings'
     | 'openDiskEncryptionSettings'
     | 'openAppStore'
+    | 'openWifiSettings'
     | 'openRemoteLoginSettings'
   suffix?: string
   note?: string

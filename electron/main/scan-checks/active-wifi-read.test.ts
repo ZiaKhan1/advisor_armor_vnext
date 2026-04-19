@@ -41,6 +41,7 @@ describe('readActiveWifiSnapshot', () => {
       assessment: {
         status: 'unknown',
         reason: 'unknown',
+        reasonText: 'security could not be determined',
         securityLabel: 'Unknown',
         detail: 'Current Wi-Fi security could not be determined.'
       }

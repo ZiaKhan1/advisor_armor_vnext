@@ -466,14 +466,10 @@ function ScanRow({
         <div className="border-t border-slate-100 px-5 py-3 text-sm text-slate-600">
           <p>{item.description}</p>
           {item.descriptionSteps && item.descriptionSteps.length > 0 ? (
-            <ol className="mt-3 list-decimal space-y-1 pl-5">
-              {item.descriptionSteps.map((step, index) => (
-                <DescriptionStep
-                  key={`${item.key}-step-${index}`}
-                  step={step}
-                />
-              ))}
-            </ol>
+            <DescriptionSteps
+              itemKey={item.key}
+              steps={item.descriptionSteps}
+            />
           ) : null}
           {item.key === 'firewall' ||
           item.key === 'diskEncryption' ||
@@ -481,7 +477,8 @@ function ScanRow({
           item.key === 'remoteLogin' ||
           item.key === 'screenIdle' ||
           item.key === 'screenLock' ||
-          item.key === 'activeWifiNetwork' ? null : (
+          item.key === 'activeWifiNetwork' ||
+          item.key === 'knownWifiNetworks' ? null : (
             <>
               <p className="mt-2 font-medium text-slate-800">
                 Recommended action
@@ -492,6 +489,82 @@ function ScanRow({
         </div>
       ) : null}
     </article>
+  )
+}
+
+function DescriptionSteps({
+  itemKey,
+  steps
+}: {
+  itemKey: string
+  steps: ScanElementDescriptionStep[]
+}): JSX.Element {
+  const elements: JSX.Element[] = []
+  let orderedSteps: ScanElementDescriptionStep[] = []
+  let orderedStart = 1
+
+  const flushOrderedSteps = (): void => {
+    if (orderedSteps.length === 0) {
+      return
+    }
+
+    const firstStepNumber = orderedStart
+    elements.push(
+      <ol
+        className="mt-3 list-decimal space-y-1 pl-5"
+        key={`${itemKey}-ordered-${firstStepNumber}`}
+        start={firstStepNumber}
+      >
+        {orderedSteps.map((step, index) => (
+          <DescriptionStep
+            key={`${itemKey}-step-${firstStepNumber + index}`}
+            step={step}
+          />
+        ))}
+      </ol>
+    )
+
+    orderedStart += orderedSteps.length
+    orderedSteps = []
+  }
+
+  steps.forEach((step, index) => {
+    if (step.unnumbered) {
+      flushOrderedSteps()
+      elements.push(
+        <DescriptionBlock key={`${itemKey}-block-${index}`} step={step} />
+      )
+      return
+    }
+
+    orderedSteps.push(step)
+  })
+
+  flushOrderedSteps()
+
+  return <>{elements}</>
+}
+
+function DescriptionBlock({
+  step
+}: {
+  step: ScanElementDescriptionStep
+}): JSX.Element {
+  return (
+    <div className="mt-3">
+      <p
+        className={`text-slate-800 ${step.bold ? 'font-bold' : 'font-medium'}`}
+      >
+        {step.text}
+      </p>
+      {step.children && step.children.length > 0 ? (
+        <ul className="mt-2 list-disc space-y-2 pl-5">
+          {step.children.map((child, index) => (
+            <DescriptionStep key={`${child.text}-${index}`} step={child} />
+          ))}
+        </ul>
+      ) : null}
+    </div>
   )
 }
 
@@ -533,6 +606,10 @@ function DescriptionStep({
               }
               if (step.action === 'openAppStore') {
                 void window.deviceWatch.openAppStore()
+                return
+              }
+              if (step.action === 'openWifiSettings') {
+                void window.deviceWatch.openWifiSettings()
                 return
               }
               void window.deviceWatch.openRemoteLoginSettings()

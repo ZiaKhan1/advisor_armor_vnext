@@ -22,7 +22,8 @@ const scanCheckMocks = vi.hoisted(() => ({
   readRemoteLoginEnabled: vi.fn(),
   readScreenIdle: vi.fn(),
   readScreenLock: vi.fn(),
-  readActiveWifiSnapshot: vi.fn()
+  readActiveWifiSnapshot: vi.fn(),
+  readKnownWifiSnapshot: vi.fn()
 }))
 
 vi.mock('node:os', () => osMocks)
@@ -69,6 +70,10 @@ vi.mock('./scan-checks/active-wifi', () => ({
   readActiveWifiSnapshot: scanCheckMocks.readActiveWifiSnapshot
 }))
 
+vi.mock('./scan-checks/known-wifi', () => ({
+  readKnownWifiSnapshot: scanCheckMocks.readKnownWifiSnapshot
+}))
+
 const automaticUpdates: AutomaticUpdatesSnapshot = {
   enabled: false,
   checks: [
@@ -107,9 +112,19 @@ describe('readDeviceSnapshot', () => {
       assessment: {
         status: 'secure',
         reason: 'modern-protocol',
+        reasonText: 'uses a modern security mode',
         securityLabel: 'WPA2 Personal',
         detail:
           'Current Wi-Fi "OfficeNet" uses a modern security mode: WPA2 Personal.'
+      }
+    })
+    scanCheckMocks.readKnownWifiSnapshot.mockResolvedValue({
+      profiles: [],
+      assessment: {
+        status: 'secure',
+        detail: 'No insecure saved Wi-Fi networks were found on this device.',
+        networkCount: 0,
+        insecureNetworks: []
       }
     })
     vi.stubGlobal(
@@ -135,6 +150,7 @@ describe('readDeviceSnapshot', () => {
     expect(scanCheckMocks.readScreenIdle).toHaveBeenCalledWith('darwin')
     expect(scanCheckMocks.readScreenLock).toHaveBeenCalledWith('darwin')
     expect(scanCheckMocks.readActiveWifiSnapshot).toHaveBeenCalledWith('darwin')
+    expect(scanCheckMocks.readKnownWifiSnapshot).toHaveBeenCalledWith('darwin')
 
     expect(snapshot).toMatchObject({
       deviceName: 'test-host',
@@ -152,9 +168,17 @@ describe('readDeviceSnapshot', () => {
       activeWifiAssessment: {
         status: 'secure',
         reason: 'modern-protocol',
+        reasonText: 'uses a modern security mode',
         securityLabel: 'WPA2 Personal',
         detail:
           'Current Wi-Fi "OfficeNet" uses a modern security mode: WPA2 Personal.'
+      },
+      knownWifiSecure: true,
+      knownWifiAssessment: {
+        status: 'secure',
+        detail: 'No insecure saved Wi-Fi networks were found on this device.',
+        networkCount: 0,
+        insecureNetworks: []
       },
       wifiConnections: [
         {
