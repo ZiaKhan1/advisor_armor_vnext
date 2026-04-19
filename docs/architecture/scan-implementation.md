@@ -123,7 +123,23 @@ const isWindows = platform() === 'win32'
 ```
 
 Mac checks use shell commands (`defaults read`, `fdesetup`, `socketfilterfw`, `netstat`, `system_profiler`, etc.).
-Windows checks use PowerShell (`Get-NetFirewallProfile`, Shell COM properties, `Get-MpComputerStatus`, etc.), registry queries, or `netsh` for WiFi.
+Windows checks use PowerShell (`Get-NetFirewallProfile`, `Get-MpPreference`, Shell COM properties, etc.), registry queries, or `netsh` for WiFi.
+
+## Windows Defender AV
+
+Windows reads Microsoft Defender Antivirus status with:
+
+```powershell
+(Get-MpPreference).DisableRealtimeMonitoring
+```
+
+The check preserves old application behavior:
+
+- `False` → Defender real-time monitoring is enabled → PASS
+- `True` → Defender real-time monitoring is disabled → device is not OK and the configured `WinDefenderAV` policy controls whether the user sees FAIL, NUDGE, or PASS
+- command failure, null, or unexpected output → UNKNOWN internally and PASS for result reporting
+
+The unknown case intentionally shows third-party antivirus guidance and does not penalize the user. This matches the old application behavior for machines where another antivirus product or system policy prevents Defender real-time monitoring from being read.
 
 ## Disk Encryption / BitLocker
 

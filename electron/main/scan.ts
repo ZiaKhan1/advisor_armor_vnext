@@ -23,6 +23,7 @@ import { readRemoteLoginEnabled } from './scan-checks/remote-login'
 import { readScreenIdle, readScreenLock } from './scan-checks/screen-security'
 import { readActiveWifiSnapshot } from './scan-checks/active-wifi'
 import { readKnownWifiSnapshot } from './scan-checks/known-wifi'
+import { readWindowsDefenderEnabled } from './scan-checks/windows-defender'
 
 const FIREWALL_DESCRIPTION =
   'Firewalls control network traffic into and out of a system. Enabling the firewall on your device can prevent network-based attacks on your system and is especially important if you make use of unsecured wireless networks (such as at coffee shops and airports).'
@@ -48,6 +49,8 @@ const ACTIVE_WIFI_DESCRIPTION =
   'Use Wi-Fi networks that require a password and use WPA2 or WPA3 security. Networks that do not require a password or use older security can put your device at risk.'
 const KNOWN_WIFI_DESCRIPTION =
   'Saved Wi-Fi networks can be reused later by the device. Remove saved networks that do not require a password or that use outdated Wi-Fi security.'
+const WINDOWS_DEFENDER_DESCRIPTION =
+  'Real-time protection helps detect and block malware before it can install or run on your device.'
 
 async function resolvePublicIp(): Promise<string> {
   for (const url of [
@@ -78,6 +81,7 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
   const screenLockState = await readScreenLock(currentPlatform)
   const activeWifi = await readActiveWifiSnapshot(currentPlatform)
   const knownWifi = await readKnownWifiSnapshot(currentPlatform)
+  const winDefenderEnabled = await readWindowsDefenderEnabled(currentPlatform)
 
   const wifiConnections: WifiConnection[] = [
     {
@@ -113,7 +117,7 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
     automaticUpdates,
     automaticUpdatesEnabled: automaticUpdates.enabled,
     remoteLoginEnabled,
-    winDefenderEnabled: currentPlatform === 'win32' ? true : null,
+    winDefenderEnabled,
     activeWifiSecure:
       activeWifi.assessment.status === 'unknown'
         ? null
@@ -425,6 +429,19 @@ export function evaluateDevice(
       REMOTE_LOGIN_DESCRIPTION,
       getRemoteLoginDescriptionSteps(device.platform)
     ),
+    ...(device.platform === 'win32'
+      ? [
+          buildElement(
+            'winDefenderAV',
+            'Antivirus',
+            winDefenderAV,
+            describeWindowsDefenderState(device.winDefenderEnabled),
+            recommendWindowsDefenderAction(device.winDefenderEnabled),
+            WINDOWS_DEFENDER_DESCRIPTION,
+            getWindowsDefenderDescriptionSteps(device.winDefenderEnabled)
+          )
+        ]
+      : []),
     buildElement(
       'activeWifiNetwork',
       'Active Wi-Fi Network',
@@ -743,6 +760,41 @@ function getRemoteLoginDescriptionSteps(
   return [
     {
       text: 'Open device sharing settings and disable remote login.'
+    }
+  ]
+}
+
+function getWindowsDefenderDescriptionSteps(
+  enabled: boolean | null
+): ScanElementDescriptionStep[] {
+  if (enabled === true) {
+    return [
+      {
+        text: 'Click ',
+        linkText: 'here',
+        linkUrl: 'windowsdefender://threat',
+        suffix: ' to check other antivirus protection settings.'
+      }
+    ]
+  }
+
+  if (enabled == null) {
+    return [
+      {
+        text: 'If you are using another antivirus program, please make sure it is actively running and providing real-time protection. Click ',
+        linkText: 'here',
+        linkUrl: 'windowsdefender://threat',
+        suffix: ' to open the Virus and threat protection settings.'
+      }
+    ]
+  }
+
+  return [
+    {
+      text: 'Click ',
+      linkText: 'here',
+      linkUrl: 'windowsdefender://threatsettings/',
+      suffix: ' to turn on real-time protection.'
     }
   ]
 }
@@ -1191,6 +1243,16 @@ function describeRemoteLoginState(device: DeviceSnapshot): string {
     : 'Remote Login is not allowed.'
 }
 
+function describeWindowsDefenderState(enabled: boolean | null): string {
+  if (enabled == null) {
+    return 'Antivirus is not currently providing real-time protection on your system.'
+  }
+
+  return enabled
+    ? 'Antivirus is currently providing real-time protection on your system.'
+    : 'Antivirus is not currently providing real-time protection on your system.'
+}
+
 function describeActiveWifiState(assessment: ActiveWifiAssessment): string {
   if (assessment.status === 'secure' || assessment.status === 'unknown') {
     return assessment.detail
@@ -1410,6 +1472,18 @@ function recommendRemoteLoginAction(
   }
 
   return 'Disable remote login unless explicitly required.'
+}
+
+function recommendWindowsDefenderAction(enabled: boolean | null): string {
+  if (enabled === true) {
+    return 'No action required.'
+  }
+
+  if (enabled == null) {
+    return 'If you are using another antivirus program, make sure it is actively running and providing real-time protection.'
+  }
+
+  return 'Open Virus & threat protection settings and turn on real-time protection.'
 }
 
 function recommendActiveWifiAction(

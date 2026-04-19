@@ -51,8 +51,9 @@ created: 2026-04-05
 ### 5. Windows Defender AV
 
 - **Policy field:** `WinDefenderAV`
-- **Check:** Is Windows Defender AV active?
+- **Check:** Is Microsoft Defender real-time monitoring enabled? Uses `(Get-MpPreference).DisableRealtimeMonitoring` on Windows.
 - **Result:** Standard PASS/FAIL/NUDGE logic
+- **Unknown:** If Defender real-time monitoring cannot be read, treat as PASS and show third-party antivirus guidance. This preserves old application behavior for machines where another antivirus product or system policy prevents Defender real-time monitoring from being read.
 - **Special case:** Empty policy value → treat as PASS (policy not enforced)
 - **Platforms:** Windows only
 

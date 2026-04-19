@@ -1509,6 +1509,118 @@ describe('evaluateDevice remote login result', () => {
   })
 })
 
+describe('evaluateDevice Windows Defender AV result', () => {
+  it('passes when Microsoft Defender real-time protection is enabled', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: true
+      }),
+      createPolicy({ winDefenderAV: FAIL })
+    )
+
+    const antivirus = result.elements.find(
+      (item) => item.key === 'winDefenderAV'
+    )
+
+    expect(result.winDefenderAV).toBe(PASS)
+    expect(antivirus).toMatchObject({
+      title: 'Antivirus',
+      status: PASS,
+      detail:
+        'Antivirus is currently providing real-time protection on your system.',
+      descriptionSteps: [
+        {
+          text: 'Click ',
+          linkText: 'here',
+          linkUrl: 'windowsdefender://threat',
+          suffix: ' to check other antivirus protection settings.'
+        }
+      ],
+      description:
+        'Real-time protection helps detect and block malware before it can install or run on your device.',
+      fixInstruction: 'No action required.'
+    })
+  })
+
+  it('fails when Microsoft Defender real-time protection is disabled', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: false
+      }),
+      createPolicy({ winDefenderAV: FAIL })
+    )
+
+    const antivirus = result.elements.find(
+      (item) => item.key === 'winDefenderAV'
+    )
+
+    expect(result.winDefenderAV).toBe(FAIL)
+    expect(antivirus).toMatchObject({
+      status: FAIL,
+      detail:
+        'Antivirus is not currently providing real-time protection on your system.',
+      descriptionSteps: [
+        {
+          text: 'Click ',
+          linkText: 'here',
+          linkUrl: 'windowsdefender://threatsettings/',
+          suffix: ' to turn on real-time protection.'
+        }
+      ],
+      fixInstruction:
+        'Open Virus & threat protection settings and turn on real-time protection.'
+    })
+  })
+
+  it('does not penalize the user when Microsoft Defender status cannot be determined', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: null
+      }),
+      createPolicy({ winDefenderAV: FAIL })
+    )
+
+    const antivirus = result.elements.find(
+      (item) => item.key === 'winDefenderAV'
+    )
+
+    expect(result.winDefenderAV).toBe(PASS)
+    expect(antivirus).toMatchObject({
+      status: PASS,
+      detail:
+        'Antivirus is not currently providing real-time protection on your system.',
+      descriptionSteps: [
+        {
+          text: 'If you are using another antivirus program, please make sure it is actively running and providing real-time protection. Click ',
+          linkText: 'here',
+          linkUrl: 'windowsdefender://threat',
+          suffix: ' to open the Virus and threat protection settings.'
+        }
+      ],
+      fixInstruction:
+        'If you are using another antivirus program, make sure it is actively running and providing real-time protection.'
+    })
+  })
+
+  it('does not add an Antivirus row on macOS', () => {
+    const result = evaluateDevice(
+      createDevice(),
+      createPolicy({ winDefenderAV: FAIL })
+    )
+
+    expect(result.winDefenderAV).toBe(PASS)
+    expect(
+      result.elements.find((item) => item.key === 'winDefenderAV')
+    ).toBeUndefined()
+  })
+})
+
 describe('evaluateDevice disk encryption result', () => {
   it('uses macOS FileVault instructions when disk encryption is disabled', () => {
     const result = evaluateDevice(

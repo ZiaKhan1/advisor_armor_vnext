@@ -23,7 +23,8 @@ const scanCheckMocks = vi.hoisted(() => ({
   readScreenIdle: vi.fn(),
   readScreenLock: vi.fn(),
   readActiveWifiSnapshot: vi.fn(),
-  readKnownWifiSnapshot: vi.fn()
+  readKnownWifiSnapshot: vi.fn(),
+  readWindowsDefenderEnabled: vi.fn()
 }))
 
 vi.mock('node:os', () => osMocks)
@@ -74,6 +75,10 @@ vi.mock('./scan-checks/known-wifi', () => ({
   readKnownWifiSnapshot: scanCheckMocks.readKnownWifiSnapshot
 }))
 
+vi.mock('./scan-checks/windows-defender', () => ({
+  readWindowsDefenderEnabled: scanCheckMocks.readWindowsDefenderEnabled
+}))
+
 const automaticUpdates: AutomaticUpdatesSnapshot = {
   enabled: false,
   checks: [
@@ -103,6 +108,7 @@ describe('readDeviceSnapshot', () => {
       kind: 'seconds',
       seconds: 5
     })
+    scanCheckMocks.readWindowsDefenderEnabled.mockResolvedValue(null)
     scanCheckMocks.readActiveWifiSnapshot.mockResolvedValue({
       facts: {
         ssid: 'OfficeNet',
@@ -151,6 +157,9 @@ describe('readDeviceSnapshot', () => {
     expect(scanCheckMocks.readScreenLock).toHaveBeenCalledWith('darwin')
     expect(scanCheckMocks.readActiveWifiSnapshot).toHaveBeenCalledWith('darwin')
     expect(scanCheckMocks.readKnownWifiSnapshot).toHaveBeenCalledWith('darwin')
+    expect(scanCheckMocks.readWindowsDefenderEnabled).toHaveBeenCalledWith(
+      'darwin'
+    )
 
     expect(snapshot).toMatchObject({
       deviceName: 'test-host',
@@ -164,6 +173,7 @@ describe('readDeviceSnapshot', () => {
       automaticUpdates,
       automaticUpdatesEnabled: false,
       remoteLoginEnabled: true,
+      winDefenderEnabled: null,
       activeWifiSecure: true,
       activeWifiAssessment: {
         status: 'secure',
