@@ -471,21 +471,6 @@ function ScanRow({
               steps={item.descriptionSteps}
             />
           ) : null}
-          {item.key === 'firewall' ||
-          item.key === 'diskEncryption' ||
-          item.key === 'automaticUpdates' ||
-          item.key === 'remoteLogin' ||
-          item.key === 'screenIdle' ||
-          item.key === 'screenLock' ||
-          item.key === 'activeWifiNetwork' ||
-          item.key === 'knownWifiNetworks' ? null : (
-            <>
-              <p className="mt-2 font-medium text-slate-800">
-                Recommended action
-              </p>
-              <p className="mt-1">{item.fixInstruction}</p>
-            </>
-          )}
         </div>
       ) : null}
     </article>

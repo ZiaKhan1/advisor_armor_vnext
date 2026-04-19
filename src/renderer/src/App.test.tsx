@@ -257,7 +257,75 @@ it('opens Screen Idle details without the recommended action footer', async () =
   )
 })
 
-it('shows recommended action for non-firewall scan rows', async () => {
+it('opens Antivirus details without the recommended action footer', async () => {
+  const user = userEvent.setup()
+  installDeviceWatch(
+    createResultsState({
+      currentScan: {
+        startedAt: '2026-04-12T02:14:58.500Z',
+        durationMs: 1500,
+        companyName: 'Example Advice',
+        result: {
+          status: PASS,
+          osVersion: PASS,
+          firewall: PASS,
+          diskEncryption: PASS,
+          winDefenderAV: PASS,
+          screenLock: PASS,
+          screenIdle: PASS,
+          automaticUpdates: PASS,
+          remoteLogin: PASS,
+          activeWifiNetwork: PASS,
+          knownWifiNetworks: PASS,
+          networkID: PASS,
+          networkIDInUse: '',
+          applications: PASS,
+          appsPolicyResult: {
+            appsScanResult: PASS,
+            installedProhibitedApps: [],
+            missingRequiredAppsCategories: []
+          },
+          elements: [
+            createScanElement({
+              key: 'winDefenderAV',
+              title: 'Antivirus',
+              status: PASS,
+              detail:
+                'Antivirus is currently providing real-time protection on your system.',
+              description:
+                'Real-time protection helps detect and block malware before it can install or run on your device.',
+              descriptionSteps: [
+                {
+                  text: 'Click ',
+                  linkText: 'here',
+                  linkUrl: 'windowsdefender://threat',
+                  suffix: ' to check other antivirus protection settings.'
+                }
+              ],
+              fixInstruction: 'No action required.'
+            })
+          ]
+        }
+      }
+    })
+  )
+
+  render(<App />)
+
+  const antivirusRow = await screen.findByRole('button', {
+    name: /antivirus/i
+  })
+
+  await user.click(antivirusRow)
+
+  expect(screen.queryByText('Recommended action')).not.toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'here' })).toHaveAttribute(
+    'href',
+    'windowsdefender://threat'
+  )
+})
+
+it('opens Applications details without the recommended action footer', async () => {
   const user = userEvent.setup()
   installDeviceWatch(createResultsState())
 
@@ -269,9 +337,12 @@ it('shows recommended action for non-firewall scan rows', async () => {
 
   await user.click(applicationsRow)
 
-  expect(screen.getByText('Recommended action')).toBeInTheDocument()
+  expect(screen.queryByText('Recommended action')).not.toBeInTheDocument()
   expect(
-    screen.getByText('Install an approved password manager.')
+    screen.queryByText('Install an approved password manager.')
+  ).not.toBeInTheDocument()
+  expect(
+    screen.getByText('Required security applications help protect the device.')
   ).toBeInTheDocument()
 })
 
