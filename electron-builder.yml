@@ -14,6 +14,11 @@ mac:
   icon: assets/icon.icns
   category: public.app-category.utilities
   identity: null
+  extraResources:
+    - from: native/macos/wifi-active/dist/wifi-active
+      to: native/macos/wifi-active/wifi-active
+    - from: native/macos/wifi-known/dist/wifi-known
+      to: native/macos/wifi-known/wifi-known
   target:
     - dmg
     - zip

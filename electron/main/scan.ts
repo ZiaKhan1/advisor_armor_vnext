@@ -1,6 +1,8 @@
 import { hostname, machine, platform, release } from 'node:os'
 import type {
   DeviceSnapshot,
+  ActiveWifiAssessment,
+  KnownWifiAssessment,
   NormalizedPolicy,
   ScanElementDescriptionStep,
   ScanElementResult,
@@ -19,6 +21,8 @@ import { readAutomaticUpdates } from './scan-checks/automatic-updates'
 import { readFirewallEnabled } from './scan-checks/firewall'
 import { readRemoteLoginEnabled } from './scan-checks/remote-login'
 import { readScreenIdle, readScreenLock } from './scan-checks/screen-security'
+import { readActiveWifiSnapshot } from './scan-checks/active-wifi'
+import { readKnownWifiSnapshot } from './scan-checks/known-wifi'
 
 const FIREWALL_DESCRIPTION =
   'Firewalls control network traffic into and out of a system. Enabling the firewall on your device can prevent network-based attacks on your system and is especially important if you make use of unsecured wireless networks (such as at coffee shops and airports).'
@@ -40,6 +44,10 @@ const MAC_SCREEN_LOCK_RATIONALE =
   'Shorter lock times reduce the chance of someone accessing your Mac while it is unattended.'
 const WINDOWS_SCREEN_LOCK_RATIONALE =
   'Requiring logon on resume reduces the chance of someone accessing your Windows device while it is unattended.'
+const ACTIVE_WIFI_DESCRIPTION =
+  'Use Wi-Fi networks that require a password and use WPA2 or WPA3 security. Networks that do not require a password or use older security can put your device at risk.'
+const KNOWN_WIFI_DESCRIPTION =
+  'Saved Wi-Fi networks can be reused later by the device. Remove saved networks that do not require a password or that use outdated Wi-Fi security.'
 
 async function resolvePublicIp(): Promise<string> {
   for (const url of [
@@ -68,6 +76,8 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
   const remoteLoginEnabled = await readRemoteLoginEnabled(currentPlatform)
   const screenIdleState = await readScreenIdle(currentPlatform)
   const screenLockState = await readScreenLock(currentPlatform)
+  const activeWifi = await readActiveWifiSnapshot(currentPlatform)
+  const knownWifi = await readKnownWifiSnapshot(currentPlatform)
 
   const wifiConnections: WifiConnection[] = [
     {
@@ -104,8 +114,16 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
     automaticUpdatesEnabled: automaticUpdates.enabled,
     remoteLoginEnabled,
     winDefenderEnabled: currentPlatform === 'win32' ? true : null,
-    activeWifiSecure: true,
-    knownWifiSecure: true,
+    activeWifiSecure:
+      activeWifi.assessment.status === 'unknown'
+        ? null
+        : activeWifi.assessment.status === 'secure',
+    activeWifiAssessment: activeWifi.assessment,
+    knownWifiSecure:
+      knownWifi.assessment.status === 'unknown'
+        ? null
+        : knownWifi.assessment.status === 'secure',
+    knownWifiAssessment: knownWifi.assessment,
     networkIdInUse: publicIp,
     installedApps:
       currentPlatform === 'darwin' ? ['Safari'] : ['Microsoft Defender'],
@@ -411,19 +429,22 @@ export function evaluateDevice(
       'activeWifiNetwork',
       'Active Wi-Fi Network',
       activeWifiNetwork,
-      device.activeWifiSecure
-        ? 'Current Wi-Fi appears secure.'
-        : 'Current Wi-Fi appears insecure.',
-      'Connect only to secure Wi-Fi networks.'
+      describeActiveWifiState(device.activeWifiAssessment),
+      recommendActiveWifiAction(device.platform, device.activeWifiAssessment),
+      ACTIVE_WIFI_DESCRIPTION,
+      getActiveWifiDescriptionSteps(
+        device.platform,
+        device.activeWifiAssessment
+      )
     ),
     buildElement(
       'knownWifiNetworks',
       'Known Wi-Fi Networks',
       knownWifiNetworks,
-      device.knownWifiSecure
-        ? 'Known Wi-Fi profiles appear secure.'
-        : 'Known Wi-Fi profiles may include insecure networks.',
-      'Remove insecure saved Wi-Fi networks.'
+      describeKnownWifiState(device.knownWifiAssessment),
+      recommendKnownWifiAction(device.knownWifiAssessment),
+      KNOWN_WIFI_DESCRIPTION,
+      getKnownWifiDescriptionSteps(device.platform, device.knownWifiAssessment)
     ),
     buildElement(
       'networkId',
@@ -726,6 +747,198 @@ function getRemoteLoginDescriptionSteps(
   ]
 }
 
+function getActiveWifiDescriptionSteps(
+  currentPlatform: string,
+  assessment: ActiveWifiAssessment
+): ScanElementDescriptionStep[] {
+  if (currentPlatform === 'darwin') {
+    const steps: ScanElementDescriptionStep[] = [
+      { text: 'Choose System Settings from the Apple menu.' },
+      {
+        text: 'Choose ',
+        linkText: 'Wi-Fi',
+        linkUrl: 'x-apple.systempreferences:com.apple.wifi-settings-extension',
+        suffix:
+          ' to see your current Wi-Fi connection and other available networks.'
+      }
+    ]
+
+    if (assessment.status === 'secure' || assessment.status === 'unknown') {
+      steps.push({
+        text: 'When possible, connect to a password-protected WPA2 or WPA3 network.'
+      })
+      return steps
+    }
+
+    steps.push(
+      {
+        text: 'Disconnect from the current Wi-Fi network:',
+        children: [
+          {
+            text: 'Click Details next to the currently connected Wi-Fi network.'
+          },
+          { text: 'Click Forget This Network.' },
+          { text: 'Confirm or remove the network if prompted.' }
+        ]
+      },
+      {
+        text: 'Connect to a secure Wi-Fi network:',
+        children: [
+          {
+            text: 'Select a password-protected WPA2 or WPA3 network from the available Wi-Fi networks.'
+          },
+          { text: 'Enter the network password if prompted.' },
+          { text: 'Click Connect.' }
+        ]
+      }
+    )
+
+    return steps
+  }
+
+  if (currentPlatform === 'win32') {
+    if (assessment.status === 'secure' || assessment.status === 'unknown') {
+      return [
+        {
+          text: 'Open ',
+          linkText: 'Wi-Fi',
+          action: 'openWifiSettings',
+          suffix: ' in Settings to see your current Wi-Fi connection.'
+        },
+        {
+          text: 'When possible, connect to a password-protected WPA2 or WPA3 network.'
+        }
+      ]
+    }
+
+    return [
+      {
+        text: 'Open ',
+        linkText: 'Wi-Fi',
+        action: 'openWifiSettings',
+        suffix: ' in Settings.'
+      },
+      { text: 'Click Show available networks.' },
+      { text: 'Click Disconnect to disconnect the current Wi-Fi network.' },
+      {
+        text: 'Connect to a secure Wi-Fi network:',
+        children: [
+          {
+            text: 'Select a password-protected WPA2 or WPA3 network from the available Wi-Fi networks list.'
+          },
+          { text: 'Enter the network password if prompted.' },
+          { text: 'Click Connect.' }
+        ]
+      }
+    ]
+  }
+
+  return [
+    {
+      text: 'Open device Wi-Fi settings and use a password-protected WPA2 or WPA3 network.'
+    }
+  ]
+}
+
+function getKnownWifiDescriptionSteps(
+  currentPlatform: string,
+  assessment: KnownWifiAssessment
+): ScanElementDescriptionStep[] {
+  const insecureNetworkSteps = [...assessment.insecureNetworks]
+    .sort((left, right) =>
+      left.ssid.localeCompare(right.ssid, undefined, { sensitivity: 'base' })
+    )
+    .map((network) => ({
+      text: `${network.ssid} - ${network.securityLabel} - ${network.reasonText}`
+    }))
+
+  if (currentPlatform === 'darwin') {
+    const steps: ScanElementDescriptionStep[] = [
+      { text: 'Choose System Settings from the Apple menu.' },
+      {
+        text: 'Select ',
+        linkText: 'Wi-Fi',
+        linkUrl: 'x-apple.systempreferences:com.apple.wifi-settings-extension',
+        suffix: ' from the sidebar.'
+      },
+      {
+        text: 'Click Advanced to see saved Wi-Fi networks known to this device.'
+      }
+    ]
+
+    if (assessment.insecureNetworks.length === 0) {
+      return steps
+    }
+
+    steps.push(
+      {
+        text: 'Remove each insecure saved Wi-Fi network using these steps:',
+        children: [
+          {
+            text: 'Click the circle with three dots next to the network name.'
+          },
+          { text: 'Click Remove from List.' },
+          { text: 'Click Remove or Forget if prompted.' }
+        ]
+      },
+      {
+        text: 'List of insecure saved Wi-Fi networks:',
+        unnumbered: true,
+        bold: true,
+        children: insecureNetworkSteps
+      }
+    )
+
+    return steps
+  }
+
+  if (currentPlatform === 'win32') {
+    const steps: ScanElementDescriptionStep[] = [
+      {
+        text: 'Open ',
+        linkText: 'Wi-Fi',
+        action: 'openWifiSettings',
+        suffix: ' in Settings.'
+      },
+      { text: 'Click Manage known networks.' }
+    ]
+
+    if (assessment.insecureNetworks.length === 0) {
+      return steps
+    }
+
+    steps.push(
+      {
+        text: 'Remove each insecure saved Wi-Fi network using these steps:',
+        children: [{ text: 'Select the network.' }, { text: 'Click Forget.' }]
+      },
+      {
+        text: 'List of insecure saved Wi-Fi networks:',
+        unnumbered: true,
+        bold: true,
+        children: insecureNetworkSteps
+      }
+    )
+
+    return steps
+  }
+
+  if (assessment.insecureNetworks.length === 0) {
+    return [
+      {
+        text: 'Open device Wi-Fi settings and review saved Wi-Fi networks.'
+      }
+    ]
+  }
+
+  return [
+    {
+      text: 'Open device Wi-Fi settings and remove these insecure saved networks:',
+      children: insecureNetworkSteps
+    }
+  ]
+}
+
 function getScreenIdleDescriptionSteps(
   currentPlatform: string,
   policySeconds: number | null
@@ -887,7 +1100,7 @@ function describeFirewallState(
     }
 
     if (status === FAIL) {
-      return "The macOS firewall is turned off. This device does not meet your organisation's firewall policy."
+      return 'The macOS firewall is turned off.'
     }
 
     return 'The macOS firewall is turned off. Enabling it helps protect this device from unwanted network connections, especially on public or unsecured Wi-Fi networks.'
@@ -899,7 +1112,7 @@ function describeFirewallState(
     }
 
     if (status === FAIL) {
-      return "One or more Windows Defender Firewall profiles appear to be turned off. This device does not meet your organisation's firewall policy."
+      return 'One or more Windows Defender Firewall profiles appear to be turned off.'
     }
 
     return 'One or more Windows Defender Firewall profiles appear to be turned off. The firewall helps protect this device from unwanted network connections, especially on public or unsecured networks.'
@@ -974,8 +1187,41 @@ function describeRemoteLoginState(device: DeviceSnapshot): string {
   }
 
   return device.remoteLoginEnabled
-    ? 'Remote login appears enabled.'
-    : 'Remote login appears disabled.'
+    ? 'Remote Login is allowed.'
+    : 'Remote Login is not allowed.'
+}
+
+function describeActiveWifiState(assessment: ActiveWifiAssessment): string {
+  if (assessment.status === 'secure' || assessment.status === 'unknown') {
+    return assessment.detail
+  }
+
+  const securityType =
+    assessment.securityLabel && assessment.securityLabel !== 'Unknown'
+      ? ` Security type: ${assessment.securityLabel}.`
+      : ''
+
+  if (assessment.reason === 'no-password') {
+    return `${assessment.detail}${securityType} Use a password-protected WPA2 or WPA3 network.`
+  }
+
+  return `${assessment.detail}${securityType} Use a WPA2 or WPA3 network.`
+}
+
+function describeKnownWifiState(assessment: KnownWifiAssessment): string {
+  return assessment.detail
+}
+
+function recommendKnownWifiAction(assessment: KnownWifiAssessment): string {
+  if (assessment.status === 'secure') {
+    return 'No action required.'
+  }
+
+  if (assessment.status === 'unknown') {
+    return 'Open Wi-Fi settings and review saved networks if needed.'
+  }
+
+  return 'Remove the insecure saved Wi-Fi networks listed above.'
 }
 
 function describeScreenIdleState(
@@ -1164,6 +1410,29 @@ function recommendRemoteLoginAction(
   }
 
   return 'Disable remote login unless explicitly required.'
+}
+
+function recommendActiveWifiAction(
+  currentPlatform: string,
+  assessment: ActiveWifiAssessment
+): string {
+  if (assessment.status === 'secure') {
+    return 'No action required.'
+  }
+
+  if (assessment.status === 'unknown') {
+    return 'Use a password-protected WPA2 or WPA3 network.'
+  }
+
+  if (currentPlatform === 'darwin') {
+    return 'Open System Settings > Wi-Fi and connect to a password-protected WPA2 or WPA3 network.'
+  }
+
+  if (currentPlatform === 'win32') {
+    return 'Open Wi-Fi settings and connect to a password-protected WPA2 or WPA3 network.'
+  }
+
+  return 'Connect to a password-protected WPA2 or WPA3 network.'
 }
 
 function recommendScreenIdleAction(

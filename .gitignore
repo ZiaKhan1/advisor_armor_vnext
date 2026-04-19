@@ -5,6 +5,8 @@ playwright-report
 test-results
 coverage
 dist
+native/macos/*/dist
+native/macos/*/.build
 .DS_Store
 Thumbs.db
 *.log

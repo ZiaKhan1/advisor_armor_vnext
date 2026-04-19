@@ -82,7 +82,21 @@ function createDevice(overrides: Partial<DeviceSnapshot> = {}): DeviceSnapshot {
     remoteLoginEnabled: false,
     winDefenderEnabled: null,
     activeWifiSecure: true,
+    activeWifiAssessment: {
+      status: 'secure',
+      reason: 'modern-protocol',
+      reasonText: 'uses a modern security mode',
+      securityLabel: 'WPA2 Personal',
+      detail:
+        'Current Wi-Fi "OfficeNet" uses a modern security mode: WPA2 Personal.'
+    },
     knownWifiSecure: true,
+    knownWifiAssessment: {
+      status: 'secure',
+      detail: 'No insecure saved Wi-Fi networks were found on this device.',
+      networkCount: 0,
+      insecureNetworks: []
+    },
     networkIdInUse: '',
     installedApps: [],
     wifiConnections: [],
@@ -163,7 +177,7 @@ describe('evaluateDevice firewall result', () => {
     expect(firewall).toMatchObject({
       status: FAIL,
       detail:
-        "One or more Windows Defender Firewall profiles appear to be turned off. This device does not meet your organisation's firewall policy.",
+        'One or more Windows Defender Firewall profiles appear to be turned off.',
       descriptionSteps: [
         {
           text: 'Open ',
@@ -197,6 +211,435 @@ describe('evaluateDevice firewall result', () => {
       detail: 'Firewall status could not be determined.',
       fixInstruction:
         'Ensure the macOS firewall is turned on. Open System Settings > Network > Firewall and turn Firewall on if needed.'
+    })
+  })
+})
+
+describe('evaluateDevice active Wi-Fi result', () => {
+  it.each([
+    {
+      name: 'passes secure Wi-Fi regardless of fail policy',
+      activeWifiSecure: true,
+      policyValue: FAIL,
+      expected: PASS
+    },
+    {
+      name: 'passes insecure Wi-Fi when policy is PASS',
+      activeWifiSecure: false,
+      policyValue: PASS,
+      expected: PASS
+    },
+    {
+      name: 'nudges insecure Wi-Fi when policy is NUDGE',
+      activeWifiSecure: false,
+      policyValue: NUDGE,
+      expected: NUDGE
+    },
+    {
+      name: 'fails insecure Wi-Fi when policy is FAIL',
+      activeWifiSecure: false,
+      policyValue: FAIL,
+      expected: FAIL
+    },
+    {
+      name: 'passes unknown Wi-Fi when policy is FAIL',
+      activeWifiSecure: null,
+      policyValue: FAIL,
+      expected: PASS
+    }
+  ])('$name', ({ activeWifiSecure, policyValue, expected }) => {
+    const result = evaluateDevice(
+      createDevice({
+        activeWifiSecure,
+        activeWifiAssessment:
+          activeWifiSecure === false
+            ? {
+                status: 'insecure',
+                reason: 'no-password',
+                reasonText: 'does not require a password',
+                securityLabel: 'Open',
+                detail: 'Current Wi-Fi "Guest" does not require a password.'
+              }
+            : activeWifiSecure == null
+              ? {
+                  status: 'unknown',
+                  reason: 'unknown',
+                  reasonText: 'security could not be determined',
+                  securityLabel: 'Unknown',
+                  detail: 'Current Wi-Fi security could not be determined.'
+                }
+              : {
+                  status: 'secure',
+                  reason: 'modern-protocol',
+                  reasonText: 'uses a modern security mode',
+                  securityLabel: 'WPA2 Personal',
+                  detail:
+                    'Current Wi-Fi "OfficeNet" uses a modern security mode: WPA2 Personal.'
+                }
+      }),
+      createPolicy({ activeWifiNetwork: policyValue })
+    )
+
+    expect(result.activeWifiNetwork).toBe(expected)
+  })
+
+  it('uses macOS no-password detail and remediation steps', () => {
+    const result = evaluateDevice(
+      createDevice({
+        activeWifiSecure: false,
+        activeWifiAssessment: {
+          status: 'insecure',
+          reason: 'no-password',
+          reasonText: 'does not require a password',
+          securityLabel: 'Open',
+          detail: 'Current Wi-Fi "Guest" does not require a password.'
+        }
+      }),
+      createPolicy({ activeWifiNetwork: NUDGE })
+    )
+
+    const activeWifi = result.elements.find(
+      (item) => item.key === 'activeWifiNetwork'
+    )
+
+    expect(activeWifi).toMatchObject({
+      status: NUDGE,
+      detail:
+        'Current Wi-Fi "Guest" does not require a password. Security type: Open. Use a password-protected WPA2 or WPA3 network.',
+      descriptionSteps: [
+        { text: 'Choose System Settings from the Apple menu.' },
+        {
+          text: 'Choose ',
+          linkText: 'Wi-Fi',
+          linkUrl:
+            'x-apple.systempreferences:com.apple.wifi-settings-extension',
+          suffix:
+            ' to see your current Wi-Fi connection and other available networks.'
+        },
+        {
+          text: 'Disconnect from the current Wi-Fi network:',
+          children: [
+            {
+              text: 'Click Details next to the currently connected Wi-Fi network.'
+            },
+            { text: 'Click Forget This Network.' },
+            { text: 'Confirm or remove the network if prompted.' }
+          ]
+        },
+        {
+          text: 'Connect to a secure Wi-Fi network:',
+          children: [
+            {
+              text: 'Select a password-protected WPA2 or WPA3 network from the available Wi-Fi networks.'
+            },
+            { text: 'Enter the network password if prompted.' },
+            { text: 'Click Connect.' }
+          ]
+        }
+      ]
+    })
+  })
+
+  it('uses Windows weak-protocol detail and remediation steps', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: true,
+        activeWifiSecure: false,
+        activeWifiAssessment: {
+          status: 'insecure',
+          reason: 'weak-protocol',
+          reasonText: 'uses weak Wi-Fi security',
+          securityLabel: 'WPA-Personal / TKIP',
+          detail: 'Current Wi-Fi "Office" uses a weak security mode.'
+        }
+      }),
+      createPolicy({ activeWifiNetwork: FAIL })
+    )
+
+    const activeWifi = result.elements.find(
+      (item) => item.key === 'activeWifiNetwork'
+    )
+
+    expect(activeWifi).toMatchObject({
+      status: FAIL,
+      detail:
+        'Current Wi-Fi "Office" uses a weak security mode. Security type: WPA-Personal / TKIP. Use a WPA2 or WPA3 network.',
+      descriptionSteps: [
+        {
+          text: 'Open ',
+          linkText: 'Wi-Fi',
+          action: 'openWifiSettings',
+          suffix: ' in Settings.'
+        },
+        { text: 'Click Show available networks.' },
+        { text: 'Click Disconnect to disconnect the current Wi-Fi network.' },
+        {
+          text: 'Connect to a secure Wi-Fi network:',
+          children: [
+            {
+              text: 'Select a password-protected WPA2 or WPA3 network from the available Wi-Fi networks list.'
+            },
+            { text: 'Enter the network password if prompted.' },
+            { text: 'Click Connect.' }
+          ]
+        }
+      ]
+    })
+  })
+
+  it('uses pass-safe wording when Wi-Fi security is unknown', () => {
+    const result = evaluateDevice(
+      createDevice({
+        activeWifiSecure: null,
+        activeWifiAssessment: {
+          status: 'unknown',
+          reason: 'unknown',
+          reasonText: 'security could not be determined',
+          securityLabel: 'Unknown',
+          detail: 'Current Wi-Fi security could not be determined.'
+        }
+      }),
+      createPolicy({ activeWifiNetwork: FAIL })
+    )
+
+    const activeWifi = result.elements.find(
+      (item) => item.key === 'activeWifiNetwork'
+    )
+
+    expect(result.activeWifiNetwork).toBe(PASS)
+    expect(activeWifi).toMatchObject({
+      status: PASS,
+      detail: 'Current Wi-Fi security could not be determined.',
+      descriptionSteps: [
+        { text: 'Choose System Settings from the Apple menu.' },
+        {
+          text: 'Choose ',
+          linkText: 'Wi-Fi',
+          linkUrl:
+            'x-apple.systempreferences:com.apple.wifi-settings-extension',
+          suffix:
+            ' to see your current Wi-Fi connection and other available networks.'
+        },
+        {
+          text: 'When possible, connect to a password-protected WPA2 or WPA3 network.'
+        }
+      ]
+    })
+  })
+})
+
+describe('evaluateDevice known Wi-Fi result', () => {
+  it.each([
+    {
+      name: 'passes secure saved networks regardless of fail policy',
+      knownWifiSecure: true,
+      policyValue: FAIL,
+      expected: PASS
+    },
+    {
+      name: 'passes insecure saved networks when policy is PASS',
+      knownWifiSecure: false,
+      policyValue: PASS,
+      expected: PASS
+    },
+    {
+      name: 'nudges insecure saved networks when policy is NUDGE',
+      knownWifiSecure: false,
+      policyValue: NUDGE,
+      expected: NUDGE
+    },
+    {
+      name: 'fails insecure saved networks when policy is FAIL',
+      knownWifiSecure: false,
+      policyValue: FAIL,
+      expected: FAIL
+    },
+    {
+      name: 'passes unknown saved networks when policy is FAIL',
+      knownWifiSecure: null,
+      policyValue: FAIL,
+      expected: PASS
+    }
+  ])('$name', ({ knownWifiSecure, policyValue, expected }) => {
+    const result = evaluateDevice(
+      createDevice({
+        knownWifiSecure,
+        knownWifiAssessment:
+          knownWifiSecure === false
+            ? {
+                status: 'insecure',
+                detail:
+                  'This device remembers one or more insecure Wi-Fi networks.',
+                networkCount: 2,
+                insecureNetworks: [
+                  {
+                    ssid: 'Library Wi-Fi',
+                    status: 'insecure',
+                    reason: 'no-password',
+                    reasonText:
+                      'encrypts Wi-Fi traffic but does not require a password',
+                    securityLabel: 'Enhanced Open'
+                  }
+                ]
+              }
+            : knownWifiSecure == null
+              ? {
+                  status: 'unknown',
+                  detail: 'Saved Wi-Fi networks could not be checked.',
+                  networkCount: 0,
+                  insecureNetworks: []
+                }
+              : {
+                  status: 'secure',
+                  detail:
+                    'No insecure saved Wi-Fi networks were found on this device.',
+                  networkCount: 3,
+                  insecureNetworks: []
+                }
+      }),
+      createPolicy({ knownWifiNetworks: policyValue })
+    )
+
+    expect(result.knownWifiNetworks).toBe(expected)
+  })
+
+  it('lists insecure saved networks in macOS remediation steps', () => {
+    const result = evaluateDevice(
+      createDevice({
+        knownWifiSecure: false,
+        knownWifiAssessment: {
+          status: 'insecure',
+          detail: 'This device remembers one or more insecure Wi-Fi networks.',
+          networkCount: 2,
+          insecureNetworks: [
+            {
+              ssid: 'Old Router',
+              status: 'insecure',
+              reason: 'weak-protocol',
+              reasonText: 'uses outdated WPA security',
+              securityLabel: 'WPA Personal'
+            },
+            {
+              ssid: 'Cafe Guest',
+              status: 'insecure',
+              reason: 'no-password',
+              reasonText: 'does not require a password',
+              securityLabel: 'Open'
+            }
+          ]
+        }
+      }),
+      createPolicy({ knownWifiNetworks: NUDGE })
+    )
+
+    const knownWifi = result.elements.find(
+      (item) => item.key === 'knownWifiNetworks'
+    )
+
+    expect(knownWifi).toMatchObject({
+      status: NUDGE,
+      detail: 'This device remembers one or more insecure Wi-Fi networks.',
+      descriptionSteps: [
+        { text: 'Choose System Settings from the Apple menu.' },
+        {
+          text: 'Select ',
+          linkText: 'Wi-Fi',
+          linkUrl:
+            'x-apple.systempreferences:com.apple.wifi-settings-extension',
+          suffix: ' from the sidebar.'
+        },
+        {
+          text: 'Click Advanced to see saved Wi-Fi networks known to this device.'
+        },
+        {
+          text: 'Remove each insecure saved Wi-Fi network using these steps:',
+          children: [
+            {
+              text: 'Click the circle with three dots next to the network name.'
+            },
+            { text: 'Click Remove from List.' },
+            { text: 'Click Remove or Forget if prompted.' }
+          ]
+        },
+        {
+          text: 'List of insecure saved Wi-Fi networks:',
+          unnumbered: true,
+          bold: true,
+          children: [
+            { text: 'Cafe Guest - Open - does not require a password' },
+            {
+              text: 'Old Router - WPA Personal - uses outdated WPA security'
+            }
+          ]
+        }
+      ]
+    })
+  })
+
+  it('uses Windows Wi-Fi settings action for known network remediation', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: true,
+        knownWifiSecure: false,
+        knownWifiAssessment: {
+          status: 'insecure',
+          detail: 'This device remembers one or more insecure Wi-Fi networks.',
+          networkCount: 2,
+          insecureNetworks: [
+            {
+              ssid: 'Zoo Wi-Fi',
+              profileName: 'Zoo Wi-Fi',
+              status: 'insecure',
+              reason: 'weak-protocol',
+              reasonText: 'uses outdated WPA security',
+              securityLabel: 'WPA Personal'
+            },
+            {
+              ssid: 'Airport Wi-Fi',
+              profileName: 'Airport Wi-Fi',
+              status: 'insecure',
+              reason: 'no-password',
+              reasonText: 'does not require a password',
+              securityLabel: 'Open'
+            }
+          ]
+        }
+      }),
+      createPolicy({ knownWifiNetworks: FAIL })
+    )
+
+    const knownWifi = result.elements.find(
+      (item) => item.key === 'knownWifiNetworks'
+    )
+
+    expect(knownWifi).toMatchObject({
+      status: FAIL,
+      descriptionSteps: [
+        {
+          text: 'Open ',
+          linkText: 'Wi-Fi',
+          action: 'openWifiSettings',
+          suffix: ' in Settings.'
+        },
+        { text: 'Click Manage known networks.' },
+        {
+          text: 'Remove each insecure saved Wi-Fi network using these steps:',
+          children: [{ text: 'Select the network.' }, { text: 'Click Forget.' }]
+        },
+        {
+          text: 'List of insecure saved Wi-Fi networks:',
+          unnumbered: true,
+          bold: true,
+          children: [
+            { text: 'Airport Wi-Fi - Open - does not require a password' },
+            { text: 'Zoo Wi-Fi - WPA Personal - uses outdated WPA security' }
+          ]
+        }
+      ]
     })
   })
 })
@@ -968,7 +1411,7 @@ describe('evaluateDevice remote login result', () => {
     expect(result.remoteLogin).toBe(FAIL)
     expect(remoteLogin).toMatchObject({
       status: FAIL,
-      detail: 'Remote login appears enabled.',
+      detail: 'Remote Login is allowed.',
       description:
         "The 'Remote Login' setting on your device controls whether users can login remotely to the system.",
       descriptionSteps: [
@@ -1002,7 +1445,7 @@ describe('evaluateDevice remote login result', () => {
     expect(result.remoteLogin).toBe(PASS)
     expect(remoteLogin).toMatchObject({
       status: PASS,
-      detail: 'Remote login appears disabled.',
+      detail: 'Remote Login is not allowed.',
       fixInstruction: 'No action required.'
     })
   })
@@ -1045,7 +1488,7 @@ describe('evaluateDevice remote login result', () => {
     expect(result.remoteLogin).toBe(FAIL)
     expect(remoteLogin).toMatchObject({
       status: FAIL,
-      detail: 'Remote login appears enabled.',
+      detail: 'Remote Login is allowed.',
       descriptionSteps: [
         {
           text: 'Open ',

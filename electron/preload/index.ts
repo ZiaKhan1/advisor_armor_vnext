@@ -29,6 +29,7 @@ const api: DeviceWatchApi = {
   openDiskEncryptionSettings: () =>
     ipcRenderer.invoke(ipcChannels.openDiskEncryptionSettings),
   openAppStore: () => ipcRenderer.invoke(ipcChannels.openAppStore),
+  openWifiSettings: () => ipcRenderer.invoke(ipcChannels.openWifiSettings),
   openRemoteLoginSettings: () =>
     ipcRenderer.invoke(ipcChannels.openRemoteLoginSettings)
 }

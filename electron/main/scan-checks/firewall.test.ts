@@ -36,6 +36,22 @@ describe('parseWindowsFirewallState', () => {
     ).toBe(false)
   })
 
+  it('detects enabled firewall profiles from numeric JSON', () => {
+    expect(
+      parseWindowsFirewallState(
+        '[{"Name":"Domain","Enabled":1},{"Name":"Private","Enabled":1},{"Name":"Public","Enabled":1}]'
+      )
+    ).toBe(true)
+  })
+
+  it('detects disabled firewall profiles from numeric JSON', () => {
+    expect(
+      parseWindowsFirewallState(
+        '[{"Name":"Domain","Enabled":1},{"Name":"Private","Enabled":0},{"Name":"Public","Enabled":1}]'
+      )
+    ).toBe(false)
+  })
+
   it('detects a single enabled profile from JSON', () => {
     expect(parseWindowsFirewallState('{"Name":"Public","Enabled":true}')).toBe(
       true
