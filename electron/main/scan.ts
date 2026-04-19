@@ -45,7 +45,7 @@ const MAC_SCREEN_LOCK_RATIONALE =
 const WINDOWS_SCREEN_LOCK_RATIONALE =
   'Requiring logon on resume reduces the chance of someone accessing your Windows device while it is unattended.'
 const ACTIVE_WIFI_DESCRIPTION =
-  'Use password-protected WPA2 or WPA3 Wi-Fi networks when available. Open, WEP, WPA, mixed legacy, and no-password networks expose the device to avoidable network risk.'
+  'Use Wi-Fi networks that require a password and use WPA2 or WPA3 security. Networks that do not require a password or use older security can put your device at risk.'
 const KNOWN_WIFI_DESCRIPTION =
   'Saved Wi-Fi networks can be reused later by the device. Remove saved networks that do not require a password or that use outdated Wi-Fi security.'
 
@@ -1196,11 +1196,16 @@ function describeActiveWifiState(assessment: ActiveWifiAssessment): string {
     return assessment.detail
   }
 
+  const securityType =
+    assessment.securityLabel && assessment.securityLabel !== 'Unknown'
+      ? ` Security type: ${assessment.securityLabel}.`
+      : ''
+
   if (assessment.reason === 'no-password') {
-    return `${assessment.detail} Use a password-protected WPA2 or WPA3 network.`
+    return `${assessment.detail}${securityType} Use a password-protected WPA2 or WPA3 network.`
   }
 
-  return `${assessment.detail} Use a WPA2 or WPA3 network.`
+  return `${assessment.detail}${securityType} Use a WPA2 or WPA3 network.`
 }
 
 function describeKnownWifiState(assessment: KnownWifiAssessment): string {

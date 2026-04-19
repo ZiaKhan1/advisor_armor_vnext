@@ -305,7 +305,7 @@ describe('evaluateDevice active Wi-Fi result', () => {
     expect(activeWifi).toMatchObject({
       status: NUDGE,
       detail:
-        'Current Wi-Fi "Guest" does not require a password. Use a password-protected WPA2 or WPA3 network.',
+        'Current Wi-Fi "Guest" does not require a password. Security type: Open. Use a password-protected WPA2 or WPA3 network.',
       descriptionSteps: [
         { text: 'Choose System Settings from the Apple menu.' },
         {
@@ -365,7 +365,7 @@ describe('evaluateDevice active Wi-Fi result', () => {
     expect(activeWifi).toMatchObject({
       status: FAIL,
       detail:
-        'Current Wi-Fi "Office" uses a weak security mode. Use a WPA2 or WPA3 network.',
+        'Current Wi-Fi "Office" uses a weak security mode. Security type: WPA-Personal / TKIP. Use a WPA2 or WPA3 network.',
       descriptionSteps: [
         {
           text: 'Open ',
