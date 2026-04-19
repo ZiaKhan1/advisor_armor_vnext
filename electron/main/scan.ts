@@ -770,6 +770,7 @@ function getWindowsDefenderDescriptionSteps(
   if (enabled === true) {
     return [
       {
+        unnumbered: true,
         text: 'Click ',
         linkText: 'here',
         linkUrl: 'windowsdefender://threat',
@@ -781,6 +782,7 @@ function getWindowsDefenderDescriptionSteps(
   if (enabled == null) {
     return [
       {
+        unnumbered: true,
         text: 'If you are using another antivirus program, please make sure it is actively running and providing real-time protection. Click ',
         linkText: 'here',
         linkUrl: 'windowsdefender://threat',
@@ -791,6 +793,7 @@ function getWindowsDefenderDescriptionSteps(
 
   return [
     {
+      unnumbered: true,
       text: 'Click ',
       linkText: 'here',
       linkUrl: 'windowsdefender://threatsettings/',

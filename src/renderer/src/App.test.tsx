@@ -296,6 +296,7 @@ it('opens Antivirus details without the recommended action footer', async () => 
                 'Real-time protection helps detect and block malware before it can install or run on your device.',
               descriptionSteps: [
                 {
+                  unnumbered: true,
                   text: 'Click ',
                   linkText: 'here',
                   linkUrl: 'windowsdefender://threat',
@@ -319,6 +320,7 @@ it('opens Antivirus details without the recommended action footer', async () => 
   await user.click(antivirusRow)
 
   expect(screen.queryByText('Recommended action')).not.toBeInTheDocument()
+  expect(screen.queryByRole('list')).not.toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'here' })).toHaveAttribute(
     'href',
     'windowsdefender://threat'

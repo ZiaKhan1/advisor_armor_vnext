@@ -540,7 +540,7 @@ function DescriptionBlock({
       <p
         className={`text-slate-800 ${step.bold ? 'font-bold' : 'font-medium'}`}
       >
-        {step.text}
+        <DescriptionStepContent step={step} />
       </p>
       {step.children && step.children.length > 0 ? (
         <ul className="mt-2 list-disc space-y-2 pl-5">
@@ -561,49 +561,7 @@ function DescriptionStep({
   return (
     <li>
       <span className={step.status ? statusTextClass(step.status) : undefined}>
-        {step.status ? (
-          <span className="mr-2 font-bold">
-            {step.status === FAIL ? '✕' : step.status === NUDGE ? '!' : '✓'}
-          </span>
-        ) : null}
-        {step.text}
-        {step.linkText && step.linkUrl ? (
-          <a
-            className="font-medium text-sky-700 underline underline-offset-2"
-            href={step.linkUrl}
-            rel="noreferrer"
-            target="_blank"
-          >
-            {step.linkText}
-          </a>
-        ) : step.linkText && step.action ? (
-          <button
-            className="font-medium text-sky-700 underline underline-offset-2"
-            type="button"
-            onClick={() => {
-              if (step.action === 'openFirewallSettings') {
-                void window.deviceWatch.openFirewallSettings()
-                return
-              }
-              if (step.action === 'openDiskEncryptionSettings') {
-                void window.deviceWatch.openDiskEncryptionSettings()
-                return
-              }
-              if (step.action === 'openAppStore') {
-                void window.deviceWatch.openAppStore()
-                return
-              }
-              if (step.action === 'openWifiSettings') {
-                void window.deviceWatch.openWifiSettings()
-                return
-              }
-              void window.deviceWatch.openRemoteLoginSettings()
-            }}
-          >
-            {step.linkText}
-          </button>
-        ) : null}
-        {step.suffix}
+        <DescriptionStepContent step={step} />
       </span>
       {step.note ? (
         <ul className="mt-1 list-disc pl-5 text-slate-500">
@@ -618,6 +576,60 @@ function DescriptionStep({
         </ul>
       ) : null}
     </li>
+  )
+}
+
+function DescriptionStepContent({
+  step
+}: {
+  step: ScanElementDescriptionStep
+}): JSX.Element {
+  return (
+    <>
+      {step.status ? (
+        <span className="mr-2 font-bold">
+          {step.status === FAIL ? '✕' : step.status === NUDGE ? '!' : '✓'}
+        </span>
+      ) : null}
+      {step.text}
+      {step.linkText && step.linkUrl ? (
+        <a
+          className="font-medium text-sky-700 underline underline-offset-2"
+          href={step.linkUrl}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {step.linkText}
+        </a>
+      ) : step.linkText && step.action ? (
+        <button
+          className="font-medium text-sky-700 underline underline-offset-2"
+          type="button"
+          onClick={() => {
+            if (step.action === 'openFirewallSettings') {
+              void window.deviceWatch.openFirewallSettings()
+              return
+            }
+            if (step.action === 'openDiskEncryptionSettings') {
+              void window.deviceWatch.openDiskEncryptionSettings()
+              return
+            }
+            if (step.action === 'openAppStore') {
+              void window.deviceWatch.openAppStore()
+              return
+            }
+            if (step.action === 'openWifiSettings') {
+              void window.deviceWatch.openWifiSettings()
+              return
+            }
+            void window.deviceWatch.openRemoteLoginSettings()
+          }}
+        >
+          {step.linkText}
+        </button>
+      ) : null}
+      {step.suffix}
+    </>
   )
 }
 
