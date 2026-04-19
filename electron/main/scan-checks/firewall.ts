@@ -53,7 +53,9 @@ export function parseWindowsFirewallState(output: string): boolean | null {
     const enabledValues = profiles
       .map((profile) =>
         profile && typeof profile === 'object'
-          ? (profile as { Enabled?: unknown }).Enabled
+          ? normalizeWindowsFirewallEnabledValue(
+              (profile as { Enabled?: unknown }).Enabled
+            )
           : undefined
       )
       .filter((enabled): enabled is boolean => typeof enabled === 'boolean')
@@ -66,6 +68,22 @@ export function parseWindowsFirewallState(output: string): boolean | null {
   } catch {
     return parseWindowsFirewallTextState(trimmed)
   }
+}
+
+function normalizeWindowsFirewallEnabledValue(value: unknown): boolean | null {
+  if (typeof value === 'boolean') {
+    return value
+  }
+
+  if (value === 1) {
+    return true
+  }
+
+  if (value === 0) {
+    return false
+  }
+
+  return null
 }
 
 function parseWindowsFirewallTextState(output: string): boolean | null {

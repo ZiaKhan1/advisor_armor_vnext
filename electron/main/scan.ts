@@ -1187,8 +1187,8 @@ function describeRemoteLoginState(device: DeviceSnapshot): string {
   }
 
   return device.remoteLoginEnabled
-    ? 'Remote login appears enabled.'
-    : 'Remote login appears disabled.'
+    ? 'Remote Login is allowed.'
+    : 'Remote Login is not allowed.'
 }
 
 function describeActiveWifiState(assessment: ActiveWifiAssessment): string {

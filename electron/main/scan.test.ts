@@ -1411,7 +1411,7 @@ describe('evaluateDevice remote login result', () => {
     expect(result.remoteLogin).toBe(FAIL)
     expect(remoteLogin).toMatchObject({
       status: FAIL,
-      detail: 'Remote login appears enabled.',
+      detail: 'Remote Login is allowed.',
       description:
         "The 'Remote Login' setting on your device controls whether users can login remotely to the system.",
       descriptionSteps: [
@@ -1445,7 +1445,7 @@ describe('evaluateDevice remote login result', () => {
     expect(result.remoteLogin).toBe(PASS)
     expect(remoteLogin).toMatchObject({
       status: PASS,
-      detail: 'Remote login appears disabled.',
+      detail: 'Remote Login is not allowed.',
       fixInstruction: 'No action required.'
     })
   })
@@ -1488,7 +1488,7 @@ describe('evaluateDevice remote login result', () => {
     expect(result.remoteLogin).toBe(FAIL)
     expect(remoteLogin).toMatchObject({
       status: FAIL,
-      detail: 'Remote login appears enabled.',
+      detail: 'Remote Login is allowed.',
       descriptionSteps: [
         {
           text: 'Open ',
