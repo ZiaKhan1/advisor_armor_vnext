@@ -1,6 +1,8 @@
 import { hostname, machine, platform, release } from 'node:os'
 import type {
   DeviceSnapshot,
+  AppDetectionStatus,
+  PolicyAppDetection,
   ActiveWifiAssessment,
   KnownWifiAssessment,
   NormalizedPolicy,
@@ -24,6 +26,7 @@ import { readScreenIdle, readScreenLock } from './scan-checks/screen-security'
 import { readActiveWifiSnapshot } from './scan-checks/active-wifi'
 import { readKnownWifiSnapshot } from './scan-checks/known-wifi'
 import { readWindowsDefenderEnabled } from './scan-checks/windows-defender'
+import { readPolicyAppDetections } from './scan-checks/installed-apps'
 
 const FIREWALL_DESCRIPTION =
   'Firewalls control network traffic into and out of a system. Enabling the firewall on your device can prevent network-based attacks on your system and is especially important if you make use of unsecured wireless networks (such as at coffee shops and airports).'
@@ -72,7 +75,9 @@ async function resolvePublicIp(): Promise<string> {
   return ''
 }
 
-export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
+export async function readDeviceSnapshot(
+  appsPolicy?: NormalizedPolicy['appsPolicy']
+): Promise<DeviceSnapshot> {
   const currentPlatform = platform()
   const publicIp = await resolvePublicIp()
   const firewallEnabled = await readFirewallEnabled(currentPlatform)
@@ -85,6 +90,9 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
   const activeWifi = await readActiveWifiSnapshot(currentPlatform)
   const knownWifi = await readKnownWifiSnapshot(currentPlatform)
   const winDefenderEnabled = await readWindowsDefenderEnabled(currentPlatform)
+  const appDetections = appsPolicy
+    ? await readPolicyAppDetections(currentPlatform, appsPolicy)
+    : []
 
   const wifiConnections: WifiConnection[] = [
     {
@@ -132,8 +140,10 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
         : knownWifi.assessment.status === 'secure',
     knownWifiAssessment: knownWifi.assessment,
     networkIdInUse: publicIp,
-    installedApps:
-      currentPlatform === 'darwin' ? ['Safari'] : ['Microsoft Defender'],
+    installedApps: appDetections
+      .filter((app) => app.status === 'installed')
+      .map((app) => app.policyAppName),
+    appDetections,
     wifiConnections,
     screenIdleState,
     screenIdleSeconds:
@@ -291,21 +301,39 @@ export function evaluateDevice(
     device.networkIdInUse
   )
 
-  const installedProhibitedApps = device.installedApps.filter((app) =>
-    policy.appsPolicy.prohibitedApps.some(
-      (prohibited) => prohibited.toLowerCase() === app.toLowerCase()
-    )
+  const appDetectionLookup = getAppDetectionLookup(device.appDetections)
+  const installedProhibitedApps = policy.appsPolicy.prohibitedApps.filter(
+    (appName) =>
+      getPolicyAppStatus(appDetectionLookup, appName, device.installedApps) ===
+      'installed'
+  )
+  const unknownProhibitedApps = policy.appsPolicy.prohibitedApps.filter(
+    (appName) =>
+      getPolicyAppStatus(appDetectionLookup, appName, device.installedApps) ===
+      'unknown'
   )
   const missingRequiredAppsCategories = policy.appsPolicy.requiredAppsCategories
     .filter((category) => {
       const installed = category.apps.filter((appName) =>
-        device.installedApps.some(
-          (installedApp) => installedApp.toLowerCase() === appName.toLowerCase()
-        )
+        isRequiredPolicyAppSatisfied(appDetectionLookup, appName, device)
       )
       return installed.length < category.requiredAppsCount
     })
     .map((category) => category.apps.join(', '))
+  const unknownRequiredApps = [
+    ...new Set(
+      policy.appsPolicy.requiredAppsCategories.flatMap((category) =>
+        category.apps.filter(
+          (appName) =>
+            getPolicyAppStatus(
+              appDetectionLookup,
+              appName,
+              device.installedApps
+            ) === 'unknown'
+        )
+      )
+    )
+  ]
 
   const applications =
     installedProhibitedApps.length === 0 &&
@@ -489,8 +517,20 @@ export function evaluateDevice(
       'applications',
       'Applications',
       applications,
-      describeAppState(installedProhibitedApps, missingRequiredAppsCategories),
-      'Remove prohibited applications and install required security tools.'
+      describeAppState(
+        installedProhibitedApps,
+        missingRequiredAppsCategories,
+        unknownProhibitedApps,
+        unknownRequiredApps
+      ),
+      'Remove prohibited applications and install required security tools.',
+      'Applications are checked against prohibited and required application policies.',
+      getAppDescriptionSteps(
+        installedProhibitedApps,
+        missingRequiredAppsCategories,
+        unknownProhibitedApps,
+        unknownRequiredApps
+      )
     )
   ]
 
@@ -1227,11 +1267,117 @@ function getScreenLockDescriptionSteps(
   ]
 }
 
+function getAppDetectionLookup(
+  detections: PolicyAppDetection[]
+): Map<string, AppDetectionStatus> {
+  return new Map(
+    detections.map((detection) => [
+      detection.policyAppName.toLowerCase(),
+      detection.status
+    ])
+  )
+}
+
+function getPolicyAppStatus(
+  detections: Map<string, AppDetectionStatus>,
+  policyAppName: string,
+  installedApps: string[]
+): AppDetectionStatus {
+  const detectedStatus = detections.get(policyAppName.toLowerCase())
+
+  if (detectedStatus) {
+    return detectedStatus
+  }
+
+  return installedApps.some(
+    (installedApp) => installedApp.toLowerCase() === policyAppName.toLowerCase()
+  )
+    ? 'installed'
+    : 'not-installed'
+}
+
+function isRequiredPolicyAppSatisfied(
+  detections: Map<string, AppDetectionStatus>,
+  policyAppName: string,
+  device: DeviceSnapshot
+): boolean {
+  const status = getPolicyAppStatus(
+    detections,
+    policyAppName,
+    device.installedApps
+  )
+
+  return status === 'installed' || status === 'unknown'
+}
+
+function getAppDescriptionSteps(
+  installedProhibitedApps: string[],
+  missingCategories: string[],
+  unknownProhibitedApps: string[],
+  unknownRequiredApps: string[]
+): ScanElementDescriptionStep[] {
+  const steps: ScanElementDescriptionStep[] = [
+    {
+      text: 'Prohibited Applications:',
+      status: installedProhibitedApps.length > 0 ? FAIL : PASS,
+      unnumbered: true,
+      bold: true,
+      children:
+        installedProhibitedApps.length > 0
+          ? [
+              {
+                text: `${installedProhibitedApps.length} prohibited ${
+                  installedProhibitedApps.length === 1
+                    ? 'application is'
+                    : 'applications are'
+                } installed`
+              },
+              ...installedProhibitedApps.map((appName) => ({ text: appName }))
+            ]
+          : undefined
+    },
+    {
+      text: 'Required Applications:',
+      status: missingCategories.length > 0 ? FAIL : PASS,
+      unnumbered: true,
+      bold: true,
+      children: missingCategories.map((category) => ({
+        text: `Required applications are missing from this category: ${category}`
+      }))
+    }
+  ]
+
+  if (unknownProhibitedApps.length > 0) {
+    steps.push({
+      text: 'The applet could not determine whether the following prohibited applications are installed. Please make sure they are not installed:',
+      unnumbered: true,
+      children: unknownProhibitedApps.map((appName) => ({ text: appName }))
+    })
+  }
+
+  if (unknownRequiredApps.length > 0) {
+    steps.push({
+      text: 'The applet could not determine whether the following required applications are installed. Please make sure they are installed:',
+      unnumbered: true,
+      children: unknownRequiredApps.map((appName) => ({ text: appName }))
+    })
+  }
+
+  return steps
+}
+
 function describeAppState(
   prohibitedApps: string[],
-  missingCategories: string[]
+  missingCategories: string[],
+  unknownProhibitedApps: string[] = [],
+  unknownRequiredApps: string[] = []
 ): string {
-  if (prohibitedApps.length === 0 && missingCategories.length === 0) {
+  if (
+    prohibitedApps.length === 0 &&
+    missingCategories.length === 0 &&
+    unknownProhibitedApps.length === 0 &&
+    unknownRequiredApps.length === 0
+  ) {
     return 'Required application checks passed.'
   }
   const parts: string[] = []
@@ -1241,6 +1387,16 @@ function describeAppState(
   if (missingCategories.length > 0) {
     parts.push(
       `Missing required app categories: ${missingCategories.join(' | ')}`
+    )
+  }
+  if (unknownProhibitedApps.length > 0) {
+    parts.push(
+      `Unable to determine prohibited apps: ${unknownProhibitedApps.join(', ')}`
+    )
+  }
+  if (unknownRequiredApps.length > 0) {
+    parts.push(
+      `Unable to determine required apps: ${unknownRequiredApps.join(', ')}`
     )
   }
   return parts.join('. ')

@@ -406,7 +406,7 @@ export class AppController extends EventEmitter {
         scanIntervalHours: policyResponse.parsed.scanIntervalHours
       })
 
-      const device = await readDeviceSnapshot()
+      const device = await readDeviceSnapshot(policyResponse.parsed.appsPolicy)
       const result = evaluateDevice(device, policyResponse.parsed)
       const durationMs = Date.now() - startedAt
       const lastScan: LastScanMetadata = {

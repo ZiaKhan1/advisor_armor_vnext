@@ -26,6 +26,15 @@ export interface RequiredAppsCategory {
   requiredAppsCount: number
 }
 
+export type AppDetectionStatus = 'installed' | 'not-installed' | 'unknown'
+
+export interface PolicyAppDetection {
+  policyAppName: string
+  folderPath: string
+  appName: string
+  status: AppDetectionStatus
+}
+
 export interface NormalizedPolicy {
   osVersions: {
     win: { ok: string; nudge: string }
@@ -163,6 +172,7 @@ export interface DeviceSnapshot {
   knownWifiAssessment: KnownWifiAssessment
   networkIdInUse: string
   installedApps: string[]
+  appDetections: PolicyAppDetection[]
   wifiConnections: WifiConnection[]
   screenIdleState: ScreenIdleState
   screenIdleSeconds: number | null

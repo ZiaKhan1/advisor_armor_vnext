@@ -181,7 +181,8 @@ created: 2026-04-05
 - **Logic:**
   - Any prohibited app found → always **FAIL** (no configurable policy action)
   - No prohibited apps found → **PASS**
-- **App detection:** TBD at implementation (path-based for Mac, TBD for Windows)
+- **Unknown:** If app detection errors or cannot determine state, treat the prohibited app as not installed so the user is not penalised. Show advisory text asking the user to make sure the prohibited app is not installed.
+- **App detection:** Policy-targeted lookup. Mac uses Spotlight `mdfind`; Windows uses `Get-StartApps`.
 - **Platforms:** Mac, Windows (separate lists)
 - **Special case:** If `AppPolicy` is `"No matching policy found"` (string) → skip this check
 
@@ -192,6 +193,7 @@ created: 2026-04-05
 - **Logic:**
   - Number of installed apps from list ≥ `requiredAppsCount` → **PASS**
   - Number of installed apps from list < `requiredAppsCount` → **FAIL**
-- **App detection:** TBD at implementation
+- **Unknown:** If app detection errors or cannot determine state, count the required app as satisfying the requirement so the user is not penalised. Show advisory text asking the user to make sure the required app is installed.
+- **App detection:** Policy-targeted lookup. Mac uses Spotlight `mdfind`; Windows uses `Get-StartApps`.
 - **Platforms:** Mac, Windows (separate lists)
 - **Special case:** If `AppPolicy` is `"No matching policy found"` (string) → skip this check

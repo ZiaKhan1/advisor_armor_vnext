@@ -261,7 +261,49 @@ Ranges and CIDR notation are intentionally not supported in v1.
 
 ## App Detection
 
-Uses `fs.existsSync` to check if an app exists at a given path. No child process needed.
+Apps Policy detection is policy-targeted. The app reads only app names present in
+the fetched prohibited-app and required-app policy lists, then checks those names
+on the current platform.
 
-- **Mac:** checks application path (e.g. `/Applications/AppName.app`)
-- **Windows:** checks file path or registry — TBD at implementation
+### Mac
+
+Mac uses Spotlight:
+
+```sh
+mdfind "kMDItemKind == 'Application' && kMDItemDisplayName == '<AppName>'c"
+```
+
+Policy entries may include a folder path, for example
+`/Bitdefender/Antivirus for Mac`. The app splits this into:
+
+- folder path: `/Bitdefender`
+- app name: `Antivirus for Mac`
+
+`mdfind` searches by app name. If a folder path was provided, the returned app
+paths are filtered so the immediate parent directory ends with the configured
+folder path, case-insensitively. If no folder path was provided, any matching
+app path counts as installed.
+
+### Windows
+
+Windows uses Start menu app entries:
+
+```powershell
+(Get-StartApps | Where-Object {$_.Name -eq '<AppName>'}).Name
+```
+
+Folder paths are not supported on Windows, matching old application behavior. If
+a Windows policy app includes a folder path, it is treated as not installed.
+
+### Unknown App Detection
+
+App lookup command failures are represented as unknown and do not penalize the
+scan:
+
+- prohibited app unknown → treat as not installed for pass/fail evaluation, and
+  show advisory text asking the user to make sure it is not installed
+- required app unknown → count as satisfying the required-app count, and show
+  advisory text asking the user to make sure it is installed
+
+Policy app names are passed as command arguments through the shared command
+runner rather than shell-concatenated.

@@ -24,7 +24,8 @@ const scanCheckMocks = vi.hoisted(() => ({
   readScreenLock: vi.fn(),
   readActiveWifiSnapshot: vi.fn(),
   readKnownWifiSnapshot: vi.fn(),
-  readWindowsDefenderEnabled: vi.fn()
+  readWindowsDefenderEnabled: vi.fn(),
+  readPolicyAppDetections: vi.fn()
 }))
 
 vi.mock('node:os', () => osMocks)
@@ -79,6 +80,10 @@ vi.mock('./scan-checks/windows-defender', () => ({
   readWindowsDefenderEnabled: scanCheckMocks.readWindowsDefenderEnabled
 }))
 
+vi.mock('./scan-checks/installed-apps', () => ({
+  readPolicyAppDetections: scanCheckMocks.readPolicyAppDetections
+}))
+
 const automaticUpdates: AutomaticUpdatesSnapshot = {
   enabled: false,
   checks: [
@@ -109,6 +114,14 @@ describe('readDeviceSnapshot', () => {
       seconds: 5
     })
     scanCheckMocks.readWindowsDefenderEnabled.mockResolvedValue(null)
+    scanCheckMocks.readPolicyAppDetections.mockResolvedValue([
+      {
+        policyAppName: 'Safari',
+        folderPath: '',
+        appName: 'Safari',
+        status: 'installed'
+      }
+    ])
     scanCheckMocks.readActiveWifiSnapshot.mockResolvedValue({
       facts: {
         ssid: 'OfficeNet',
@@ -160,6 +173,7 @@ describe('readDeviceSnapshot', () => {
     expect(scanCheckMocks.readWindowsDefenderEnabled).toHaveBeenCalledWith(
       'darwin'
     )
+    expect(scanCheckMocks.readPolicyAppDetections).not.toHaveBeenCalled()
 
     expect(snapshot).toMatchObject({
       deviceName: 'test-host',
@@ -214,6 +228,32 @@ describe('readDeviceSnapshot', () => {
       screenLockSeconds: 5,
       networkIdInUse: '203.0.113.10'
     })
+  })
+
+  it('reads policy-targeted app detections when app policy is provided', async () => {
+    const { readDeviceSnapshot } = await import('./scan')
+
+    const snapshot = await readDeviceSnapshot({
+      prohibitedApps: ['Safari'],
+      requiredAppsCategories: []
+    })
+
+    expect(scanCheckMocks.readPolicyAppDetections).toHaveBeenCalledWith(
+      'darwin',
+      {
+        prohibitedApps: ['Safari'],
+        requiredAppsCategories: []
+      }
+    )
+    expect(snapshot.installedApps).toEqual(['Safari'])
+    expect(snapshot.appDetections).toEqual([
+      {
+        policyAppName: 'Safari',
+        folderPath: '',
+        appName: 'Safari',
+        status: 'installed'
+      }
+    ])
   })
 
   it('uses the fallback public IP URL when the primary lookup fails', async () => {

@@ -99,6 +99,7 @@ function createDevice(overrides: Partial<DeviceSnapshot> = {}): DeviceSnapshot {
     },
     networkIdInUse: '',
     installedApps: [],
+    appDetections: [],
     wifiConnections: [],
     screenIdleState: { kind: 'unknown' },
     screenIdleSeconds: null,
@@ -1623,6 +1624,179 @@ describe('evaluateDevice Network ID result', () => {
         { text: 'Allowed Network IDs: 1.1.1.1', unnumbered: true }
       ],
       fixInstruction: 'Check your internet connection, then run the scan again.'
+    })
+  })
+})
+
+describe('evaluateDevice Applications result', () => {
+  it('fails when a prohibited app is installed', () => {
+    const result = evaluateDevice(
+      createDevice({
+        appDetections: [
+          {
+            policyAppName: 'ChatGPT',
+            folderPath: '',
+            appName: 'ChatGPT',
+            status: 'installed'
+          }
+        ]
+      }),
+      createPolicy({
+        appsPolicy: {
+          prohibitedApps: ['ChatGPT'],
+          requiredAppsCategories: []
+        }
+      })
+    )
+
+    const applications = result.elements.find(
+      (item) => item.key === 'applications'
+    )
+
+    expect(result.applications).toBe(FAIL)
+    expect(result.appsPolicyResult).toMatchObject({
+      appsScanResult: FAIL,
+      installedProhibitedApps: ['ChatGPT'],
+      missingRequiredAppsCategories: []
+    })
+    expect(applications).toMatchObject({
+      status: FAIL,
+      detail: 'Installed prohibited apps: ChatGPT',
+      descriptionSteps: [
+        {
+          text: 'Prohibited Applications:',
+          status: FAIL,
+          children: [
+            { text: '1 prohibited application is installed' },
+            { text: 'ChatGPT' }
+          ]
+        },
+        {
+          text: 'Required Applications:',
+          status: PASS,
+          children: []
+        }
+      ]
+    })
+  })
+
+  it('fails when a required app category does not meet the required count', () => {
+    const result = evaluateDevice(
+      createDevice({
+        appDetections: [
+          {
+            policyAppName: 'Bitdefender',
+            folderPath: '',
+            appName: 'Bitdefender',
+            status: 'installed'
+          },
+          {
+            policyAppName: 'Avast',
+            folderPath: '',
+            appName: 'Avast',
+            status: 'not-installed'
+          }
+        ]
+      }),
+      createPolicy({
+        appsPolicy: {
+          prohibitedApps: [],
+          requiredAppsCategories: [
+            { apps: ['Bitdefender', 'Avast'], requiredAppsCount: 2 }
+          ]
+        }
+      })
+    )
+
+    const applications = result.elements.find(
+      (item) => item.key === 'applications'
+    )
+
+    expect(result.applications).toBe(FAIL)
+    expect(result.appsPolicyResult.missingRequiredAppsCategories).toEqual([
+      'Bitdefender, Avast'
+    ])
+    expect(applications).toMatchObject({
+      status: FAIL,
+      detail: 'Missing required app categories: Bitdefender, Avast',
+      descriptionSteps: [
+        {
+          text: 'Prohibited Applications:',
+          status: PASS
+        },
+        {
+          text: 'Required Applications:',
+          status: FAIL,
+          children: [
+            {
+              text: 'Required applications are missing from this category: Bitdefender, Avast'
+            }
+          ]
+        }
+      ]
+    })
+  })
+
+  it('does not penalize unknown prohibited and required app checks', () => {
+    const result = evaluateDevice(
+      createDevice({
+        appDetections: [
+          {
+            policyAppName: 'ChatGPT',
+            folderPath: '',
+            appName: 'ChatGPT',
+            status: 'unknown'
+          },
+          {
+            policyAppName: 'Bitdefender',
+            folderPath: '',
+            appName: 'Bitdefender',
+            status: 'unknown'
+          }
+        ]
+      }),
+      createPolicy({
+        appsPolicy: {
+          prohibitedApps: ['ChatGPT'],
+          requiredAppsCategories: [
+            { apps: ['Bitdefender'], requiredAppsCount: 1 }
+          ]
+        }
+      })
+    )
+
+    const applications = result.elements.find(
+      (item) => item.key === 'applications'
+    )
+
+    expect(result.applications).toBe(PASS)
+    expect(result.appsPolicyResult).toMatchObject({
+      appsScanResult: PASS,
+      installedProhibitedApps: [],
+      missingRequiredAppsCategories: []
+    })
+    expect(applications).toMatchObject({
+      status: PASS,
+      detail:
+        'Unable to determine prohibited apps: ChatGPT. Unable to determine required apps: Bitdefender',
+      descriptionSteps: [
+        {
+          text: 'Prohibited Applications:',
+          status: PASS
+        },
+        {
+          text: 'Required Applications:',
+          status: PASS
+        },
+        {
+          text: 'The applet could not determine whether the following prohibited applications are installed. Please make sure they are not installed:',
+          children: [{ text: 'ChatGPT' }]
+        },
+        {
+          text: 'The applet could not determine whether the following required applications are installed. Please make sure they are installed:',
+          children: [{ text: 'Bitdefender' }]
+        }
+      ]
     })
   })
 })
