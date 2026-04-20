@@ -290,7 +290,7 @@ function createMockBackend(): BackendApi {
       ScreenLockWindows: 1,
       ScreenLockMac: 3600,
       NetworkIDPolicy: 'FAIL',
-      NetworkIDIPs: '203.0.113.10',
+      NetworkIDIPs: '124.150.84.195',
       RemoteLoginWindowsNudge: 'FAIL',
       RemoteLoginMacNudge: 'FAIL',
       ScanPage: 'YES',

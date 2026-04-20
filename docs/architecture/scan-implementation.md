@@ -240,6 +240,25 @@ Electron app.
 
 The only check that makes an HTTP request rather than an OS call — fetches the device's public IP from an external service and compares against the policy IP list. Runs independently of OS checks.
 
+Public IP lookup uses the documented fallback order:
+
+1. `https://whatismyip.akamai.com`
+2. `https://ifconfig.co/ip`
+
+The detected public IP is submitted in the backend result field, but should not
+be logged.
+
+Network ID policy behavior preserves old application parity:
+
+- `NetworkIDPolicy` PASS → PASS without enforcing the allowed-IP list
+- `NetworkIDPolicy` FAIL/NUDGE and current IP is in `NetworkIDIPs` → PASS
+- `NetworkIDPolicy` FAIL/NUDGE and current IP is not in `NetworkIDIPs` → FAIL/NUDGE
+- `NetworkIDPolicy` FAIL/NUDGE and `NetworkIDIPs` is empty/null → FAIL/NUDGE
+- Public IP lookup fails → PASS with an unknown message to avoid false alarms
+
+`NetworkIDIPs` supports exact public IP values only, separated by commas.
+Ranges and CIDR notation are intentionally not supported in v1.
+
 ## App Detection
 
 Uses `fs.existsSync` to check if an app exists at a given path. No child process needed.

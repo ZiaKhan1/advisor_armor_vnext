@@ -51,6 +51,9 @@ const KNOWN_WIFI_DESCRIPTION =
   'Saved Wi-Fi networks can be reused later by the device. Remove saved networks that do not require a password or that use outdated Wi-Fi security.'
 const WINDOWS_DEFENDER_DESCRIPTION =
   'Real-time protection helps detect and block malware before it can install or run on your device.'
+const NETWORK_ID_UNAPPROVED_MESSAGE =
+  'You are not connected to an approved network. Please contact your company administrator for further instructions.'
+const NETWORK_ID_UNKNOWN_MESSAGE = 'Network ID could not be determined.'
 
 async function resolvePublicIp(): Promise<string> {
   for (const url of [
@@ -282,14 +285,11 @@ export function evaluateDevice(
     policy.knownWifiNetworks,
     device.knownWifiSecure
   )
-  const networkID =
-    policy.networkIdIps
-      .split(',')
-      .map((ip) => ip.trim())
-      .filter(Boolean)
-      .includes(device.networkIdInUse) || policy.networkId === PASS
-      ? PASS
-      : policy.networkId
+  const networkID = evaluateNetworkId(
+    policy.networkId,
+    policy.networkIdIps,
+    device.networkIdInUse
+  )
 
   const installedProhibitedApps = device.installedApps.filter((app) =>
     policy.appsPolicy.prohibitedApps.some(
@@ -467,10 +467,23 @@ export function evaluateDevice(
       'networkId',
       'Network ID',
       networkID,
-      device.networkIdInUse
-        ? `Public IP: ${device.networkIdInUse}`
-        : 'Public IP unavailable.',
-      'Connect from an approved network.'
+      describeNetworkIdState(
+        networkID,
+        policy.networkId,
+        policy.networkIdIps,
+        device.networkIdInUse
+      ),
+      recommendNetworkIdAction(networkID, device.networkIdInUse),
+      getNetworkIdDescription(
+        networkID,
+        policy.networkIdIps,
+        device.networkIdInUse
+      ),
+      getNetworkIdDescriptionSteps(
+        networkID,
+        policy.networkIdIps,
+        device.networkIdInUse
+      )
     ),
     buildElement(
       'applications',
@@ -523,6 +536,99 @@ function buildElement(
     detail,
     fixInstruction
   }
+}
+
+function parseNetworkIdIps(networkIdIps: string): string[] {
+  return networkIdIps
+    .split(',')
+    .map((ip) => ip.trim())
+    .filter(Boolean)
+}
+
+function evaluateNetworkId(
+  policyStatus: PolicyStatus,
+  networkIdIps: string,
+  networkIdInUse: string
+): PolicyStatus {
+  if (!networkIdInUse) {
+    return PASS
+  }
+
+  if (policyStatus === PASS) {
+    return PASS
+  }
+
+  const allowedIps = parseNetworkIdIps(networkIdIps)
+
+  if (allowedIps.length === 0) {
+    return policyStatus
+  }
+
+  return allowedIps.includes(networkIdInUse) ? PASS : policyStatus
+}
+
+function describeNetworkIdState(
+  result: PolicyStatus,
+  policyStatus: PolicyStatus,
+  networkIdIps: string,
+  networkIdInUse: string
+): string {
+  if (!networkIdInUse) {
+    return NETWORK_ID_UNKNOWN_MESSAGE
+  }
+
+  if (result !== PASS) {
+    return NETWORK_ID_UNAPPROVED_MESSAGE
+  }
+
+  if (policyStatus === PASS || parseNetworkIdIps(networkIdIps).length > 0) {
+    return `Network ID in use: ${networkIdInUse}`
+  }
+
+  return NETWORK_ID_UNKNOWN_MESSAGE
+}
+
+function getNetworkIdDescriptionSteps(
+  result: PolicyStatus,
+  networkIdIps: string,
+  networkIdInUse: string
+): ScanElementDescriptionStep[] {
+  const allowedIps = parseNetworkIdIps(networkIdIps)
+  const steps: ScanElementDescriptionStep[] = []
+
+  if (!networkIdInUse || result !== PASS) {
+    steps.push({
+      text: `Network ID in use: ${networkIdInUse || 'Not available'}`,
+      unnumbered: true
+    })
+  }
+
+  steps.push({
+    text: `Allowed Network IDs: ${
+      allowedIps.length > 0 ? allowedIps.join(', ') : 'Not configured'
+    }`,
+    unnumbered: true
+  })
+
+  return steps
+}
+
+function getNetworkIdDescription(
+  result: PolicyStatus,
+  networkIdIps: string,
+  networkIdInUse: string
+): string {
+  if (!networkIdInUse) {
+    return NETWORK_ID_UNKNOWN_MESSAGE
+  }
+
+  if (result !== PASS) {
+    return ''
+  }
+
+  return parseNetworkIdIps(networkIdIps).length > 0
+    ? 'Network ID matches an approved network.'
+    : NETWORK_ID_UNKNOWN_MESSAGE
 }
 
 function getFirewallDescriptionSteps(
@@ -1487,6 +1593,21 @@ function recommendWindowsDefenderAction(enabled: boolean | null): string {
   }
 
   return 'Open Virus & threat protection settings and turn on real-time protection.'
+}
+
+function recommendNetworkIdAction(
+  result: PolicyStatus,
+  networkIdInUse: string
+): string {
+  if (!networkIdInUse) {
+    return 'Check your internet connection, then run the scan again.'
+  }
+
+  if (result === PASS) {
+    return 'No action required.'
+  }
+
+  return 'Connect from an approved network.'
 }
 
 function recommendActiveWifiAction(

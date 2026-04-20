@@ -215,4 +215,35 @@ describe('readDeviceSnapshot', () => {
       networkIdInUse: '203.0.113.10'
     })
   })
+
+  it('uses the fallback public IP URL when the primary lookup fails', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        text: async () => ''
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () => '198.51.100.25\n'
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { readDeviceSnapshot } = await import('./scan')
+
+    const snapshot = await readDeviceSnapshot()
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(snapshot.networkIdInUse).toBe('198.51.100.25')
+  })
+
+  it('leaves Network ID empty when public IP lookup fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+
+    const { readDeviceSnapshot } = await import('./scan')
+
+    const snapshot = await readDeviceSnapshot()
+
+    expect(snapshot.networkIdInUse).toBe('')
+  })
 })

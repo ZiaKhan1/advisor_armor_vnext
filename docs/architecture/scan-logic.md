@@ -166,8 +166,12 @@ created: 2026-04-05
 - **Policy fields:** `NetworkIDPolicy`, `NetworkIDIPs`
 - **Check:** Fetch device public IP from `https://whatismyip.akamai.com` or `https://ifconfig.co/ip`. Check if it is in the comma-separated list in `NetworkIDIPs`.
 - **Logic:**
+  - Public IP cannot be determined → **PASS** with unknown message (avoid false alarms)
+  - `NetworkIDPolicy` is PASS → **PASS** without enforcing `NetworkIDIPs`
   - Device IP in list → **PASS**
   - Device IP not in list → result per `NetworkIDPolicy` (PASS/FAIL/NUDGE)
+  - `NetworkIDIPs` empty/null and `NetworkIDPolicy` is FAIL/NUDGE → result per `NetworkIDPolicy`
+- **Allowed IP format:** exact public IPs only, comma-separated. IP ranges/CIDR are not supported in v1.
 - **Platforms:** Mac, Windows
 
 ### 14. App Policy — Prohibited Apps

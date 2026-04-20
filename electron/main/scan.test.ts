@@ -1509,6 +1509,124 @@ describe('evaluateDevice remote login result', () => {
   })
 })
 
+describe('evaluateDevice Network ID result', () => {
+  it('passes when Network ID policy is PASS even if the current IP is not allowed', () => {
+    const result = evaluateDevice(
+      createDevice({ networkIdInUse: '2.2.2.2' }),
+      createPolicy({ networkId: PASS, networkIdIps: '1.1.1.1' })
+    )
+
+    const networkId = result.elements.find((item) => item.key === 'networkId')
+
+    expect(result.networkID).toBe(PASS)
+    expect(result.networkIDInUse).toBe('2.2.2.2')
+    expect(networkId).toMatchObject({
+      title: 'Network ID',
+      status: PASS,
+      detail: 'Network ID in use: 2.2.2.2',
+      description: 'Network ID matches an approved network.',
+      descriptionSteps: [
+        { text: 'Allowed Network IDs: 1.1.1.1', unnumbered: true }
+      ],
+      fixInstruction: 'No action required.'
+    })
+  })
+
+  it('passes when current IP is in the comma-separated allowed list', () => {
+    const result = evaluateDevice(
+      createDevice({ networkIdInUse: '2.2.2.2' }),
+      createPolicy({
+        networkId: FAIL,
+        networkIdIps: ' 1.1.1.1, 2.2.2.2, 3.3.3.3 '
+      })
+    )
+
+    const networkId = result.elements.find((item) => item.key === 'networkId')
+
+    expect(result.networkID).toBe(PASS)
+    expect(networkId).toMatchObject({
+      status: PASS,
+      detail: 'Network ID in use: 2.2.2.2',
+      descriptionSteps: [
+        {
+          text: 'Allowed Network IDs: 1.1.1.1, 2.2.2.2, 3.3.3.3',
+          unnumbered: true
+        }
+      ]
+    })
+  })
+
+  it('applies NUDGE when current IP is not in the allowed list', () => {
+    const result = evaluateDevice(
+      createDevice({ networkIdInUse: '4.4.4.4' }),
+      createPolicy({
+        networkId: NUDGE,
+        networkIdIps: '1.1.1.1, 2.2.2.2, 3.3.3.3'
+      })
+    )
+
+    const networkId = result.elements.find((item) => item.key === 'networkId')
+
+    expect(result.networkID).toBe(NUDGE)
+    expect(networkId).toMatchObject({
+      status: NUDGE,
+      detail:
+        'You are not connected to an approved network. Please contact your company administrator for further instructions.',
+      description: '',
+      descriptionSteps: [
+        { text: 'Network ID in use: 4.4.4.4', unnumbered: true },
+        {
+          text: 'Allowed Network IDs: 1.1.1.1, 2.2.2.2, 3.3.3.3',
+          unnumbered: true
+        }
+      ],
+      fixInstruction: 'Connect from an approved network.'
+    })
+  })
+
+  it('applies FAIL when allowed IPs are empty and policy requires enforcement', () => {
+    const result = evaluateDevice(
+      createDevice({ networkIdInUse: '2.2.2.2' }),
+      createPolicy({ networkId: FAIL, networkIdIps: '' })
+    )
+
+    const networkId = result.elements.find((item) => item.key === 'networkId')
+
+    expect(result.networkID).toBe(FAIL)
+    expect(networkId).toMatchObject({
+      status: FAIL,
+      detail:
+        'You are not connected to an approved network. Please contact your company administrator for further instructions.',
+      descriptionSteps: [
+        { text: 'Network ID in use: 2.2.2.2', unnumbered: true },
+        { text: 'Allowed Network IDs: Not configured', unnumbered: true }
+      ]
+    })
+  })
+
+  it('passes with an unknown message when current public IP cannot be determined', () => {
+    const result = evaluateDevice(
+      createDevice({ networkIdInUse: '' }),
+      createPolicy({ networkId: FAIL, networkIdIps: '1.1.1.1' })
+    )
+
+    const networkId = result.elements.find((item) => item.key === 'networkId')
+
+    expect(result.networkID).toBe(PASS)
+    expect(result.networkIDInUse).toBe('')
+    expect(networkId).toMatchObject({
+      status: PASS,
+      detail: 'Network ID could not be determined.',
+      description: 'Network ID could not be determined.',
+      descriptionSteps: [
+        { text: 'Network ID in use: Not available', unnumbered: true },
+        { text: 'Allowed Network IDs: 1.1.1.1', unnumbered: true }
+      ],
+      fixInstruction: 'Check your internet connection, then run the scan again.'
+    })
+  })
+})
+
 describe('evaluateDevice Windows Defender AV result', () => {
   it('passes when Microsoft Defender real-time protection is enabled', () => {
     const result = evaluateDevice(
