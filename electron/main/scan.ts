@@ -312,14 +312,34 @@ export function evaluateDevice(
       getPolicyAppStatus(appDetectionLookup, appName, device.installedApps) ===
       'unknown'
   )
-  const missingRequiredAppsCategories = policy.appsPolicy.requiredAppsCategories
-    .filter((category) => {
-      const installed = category.apps.filter((appName) =>
-        isRequiredPolicyAppSatisfied(appDetectionLookup, appName, device)
+  const missingRequiredAppsCategoryDetails =
+    policy.appsPolicy.requiredAppsCategories
+      .map((category) => {
+        const satisfiedApps = category.apps.filter((appName) =>
+          isRequiredPolicyAppSatisfied(appDetectionLookup, appName, device)
+        )
+        const installedApps = category.apps.filter(
+          (appName) =>
+            getPolicyAppStatus(
+              appDetectionLookup,
+              appName,
+              device.installedApps
+            ) === 'installed'
+        )
+
+        return {
+          requiredAppsCount: category.requiredAppsCount,
+          requiredApps: category.apps,
+          satisfiedApps,
+          installedApps
+        }
+      })
+      .filter(
+        (category) => category.satisfiedApps.length < category.requiredAppsCount
       )
-      return installed.length < category.requiredAppsCount
-    })
-    .map((category) => category.apps.join(', '))
+  const missingRequiredAppsCategories = missingRequiredAppsCategoryDetails.map(
+    (category) => category.requiredApps.join(', ')
+  )
   const unknownRequiredApps = [
     ...new Set(
       policy.appsPolicy.requiredAppsCategories.flatMap((category) =>
@@ -517,17 +537,17 @@ export function evaluateDevice(
       'applications',
       'Applications',
       applications,
-      describeAppState(
+      describeAppSummary(
         installedProhibitedApps,
         missingRequiredAppsCategories,
         unknownProhibitedApps,
         unknownRequiredApps
       ),
       'Remove prohibited applications and install required security tools.',
-      'Applications are checked against prohibited and required application policies.',
+      '',
       getAppDescriptionSteps(
         installedProhibitedApps,
-        missingRequiredAppsCategories,
+        missingRequiredAppsCategoryDetails,
         unknownProhibitedApps,
         unknownRequiredApps
       )
@@ -1310,42 +1330,94 @@ function isRequiredPolicyAppSatisfied(
   return status === 'installed' || status === 'unknown'
 }
 
+interface MissingRequiredAppsCategoryDetail {
+  requiredAppsCount: number
+  requiredApps: string[]
+  installedApps: string[]
+}
+
+function formatRequiredAppsRequirement(
+  requiredAppsCount: number,
+  requiredApps: string[]
+): string {
+  if (requiredAppsCount === 1 && requiredApps.length === 1) {
+    return `You must install the application: ${requiredApps[0]}`
+  }
+
+  return `You must install ${requiredAppsCount} of the applications: ${requiredApps.join(', ')}`
+}
+
+function formatInstalledAppsSummary(
+  installedApps: string[],
+  requiredApps: string[]
+): string {
+  if (installedApps.length === 0) {
+    return requiredApps.length === 1
+      ? 'It is not installed.'
+      : 'None is installed.'
+  }
+
+  if (installedApps.length === 1) {
+    return `Only 1 is installed: ${installedApps[0]}`
+  }
+
+  return `Only ${installedApps.length} are installed: ${installedApps.join(', ')}`
+}
+
 function getAppDescriptionSteps(
   installedProhibitedApps: string[],
-  missingCategories: string[],
+  missingCategories: MissingRequiredAppsCategoryDetail[],
   unknownProhibitedApps: string[],
   unknownRequiredApps: string[]
 ): ScanElementDescriptionStep[] {
   const steps: ScanElementDescriptionStep[] = [
     {
       text: 'Prohibited Applications:',
+      secondaryText:
+        installedProhibitedApps.length > 0
+          ? ` ${installedProhibitedApps.length} prohibited ${
+              installedProhibitedApps.length === 1
+                ? 'application is'
+                : 'applications are'
+            } installed`
+          : ' No prohibited application is installed',
       status: installedProhibitedApps.length > 0 ? FAIL : PASS,
       unnumbered: true,
-      bold: true,
-      children:
-        installedProhibitedApps.length > 0
-          ? [
-              {
-                text: `${installedProhibitedApps.length} prohibited ${
-                  installedProhibitedApps.length === 1
-                    ? 'application is'
-                    : 'applications are'
-                } installed`
-              },
-              ...installedProhibitedApps.map((appName) => ({ text: appName }))
-            ]
-          : undefined
-    },
-    {
-      text: 'Required Applications:',
-      status: missingCategories.length > 0 ? FAIL : PASS,
-      unnumbered: true,
-      bold: true,
-      children: missingCategories.map((category) => ({
-        text: `Required applications are missing from this category: ${category}`
-      }))
+      bold: true
     }
   ]
+
+  if (installedProhibitedApps.length > 0) {
+    steps.push({
+      unnumbered: true,
+      children: installedProhibitedApps.map((appName) => ({ text: appName }))
+    })
+  }
+
+  steps.push({
+    text: 'Required Applications:',
+    secondaryText:
+      missingCategories.length > 0
+        ? ' Some required applications are missing'
+        : ' No required applications are missing',
+    status: missingCategories.length > 0 ? FAIL : PASS,
+    unnumbered: true,
+    bold: true,
+    children: missingCategories.map((category) => ({
+      text: formatRequiredAppsRequirement(
+        category.requiredAppsCount,
+        category.requiredApps
+      ),
+      children: [
+        {
+          text: formatInstalledAppsSummary(
+            category.installedApps,
+            category.requiredApps
+          )
+        }
+      ]
+    }))
+  })
 
   if (unknownProhibitedApps.length > 0) {
     steps.push({
@@ -1366,40 +1438,43 @@ function getAppDescriptionSteps(
   return steps
 }
 
-function describeAppState(
+function describeAppSummary(
   prohibitedApps: string[],
   missingCategories: string[],
   unknownProhibitedApps: string[] = [],
   unknownRequiredApps: string[] = []
 ): string {
-  if (
-    prohibitedApps.length === 0 &&
-    missingCategories.length === 0 &&
-    unknownProhibitedApps.length === 0 &&
-    unknownRequiredApps.length === 0
-  ) {
-    return 'Required application checks passed.'
+  if (prohibitedApps.length > 0 && missingCategories.length > 0) {
+    return 'There are applications installed which are prohibited. Also, some required applications are missing.'
   }
+
   const parts: string[] = []
+
   if (prohibitedApps.length > 0) {
-    parts.push(`Installed prohibited apps: ${prohibitedApps.join(', ')}`)
+    parts.push('There are applications installed which are prohibited.')
   }
+
   if (missingCategories.length > 0) {
+    parts.push('Some required applications are missing.')
+  }
+
+  if (prohibitedApps.length === 0 && unknownProhibitedApps.length > 0) {
     parts.push(
-      `Missing required app categories: ${missingCategories.join(' | ')}`
+      'The applet could not determine whether some prohibited applications are installed.'
     )
   }
-  if (unknownProhibitedApps.length > 0) {
+
+  if (missingCategories.length === 0 && unknownRequiredApps.length > 0) {
     parts.push(
-      `Unable to determine prohibited apps: ${unknownProhibitedApps.join(', ')}`
+      'The applet could not determine whether some required applications are installed.'
     )
   }
-  if (unknownRequiredApps.length > 0) {
-    parts.push(
-      `Unable to determine required apps: ${unknownRequiredApps.join(', ')}`
-    )
+
+  if (parts.length === 0) {
+    return 'Application checks passed.'
   }
-  return parts.join('. ')
+
+  return parts.join(' ')
 }
 
 function describeFirewallState(

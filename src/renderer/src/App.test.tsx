@@ -348,6 +348,90 @@ it('opens Applications details without the recommended action footer', async () 
   ).toBeInTheDocument()
 })
 
+it('groups missing required application categories in the Applications details', async () => {
+  const user = userEvent.setup()
+  installDeviceWatch(
+    createResultsState({
+      currentScan: {
+        startedAt: '2026-04-12T02:14:58.500Z',
+        durationMs: 1500,
+        companyName: 'Example Advice',
+        result: {
+          status: FAIL,
+          osVersion: PASS,
+          firewall: PASS,
+          diskEncryption: PASS,
+          winDefenderAV: PASS,
+          screenLock: PASS,
+          screenIdle: PASS,
+          automaticUpdates: PASS,
+          remoteLogin: PASS,
+          activeWifiNetwork: PASS,
+          knownWifiNetworks: PASS,
+          networkID: PASS,
+          networkIDInUse: '',
+          applications: FAIL,
+          appsPolicyResult: {
+            appsScanResult: FAIL,
+            installedProhibitedApps: [],
+            missingRequiredAppsCategories: ['Bitdefender, Avast']
+          },
+          elements: [
+            createScanElement({
+              key: 'applications',
+              title: 'Applications',
+              status: FAIL,
+              detail: 'Some required applications are missing.',
+              description: '',
+              descriptionSteps: [
+                {
+                  text: 'Required Applications:',
+                  secondaryText: ' Some required applications are missing',
+                  status: FAIL,
+                  unnumbered: true,
+                  bold: true,
+                  children: [
+                    {
+                      text: 'You must install 2 of the applications: Bitdefender, Avast',
+                      children: [{ text: 'Only 1 is installed: Bitdefender' }]
+                    },
+                    {
+                      text: 'You must install the application: AdvisorArmor2',
+                      children: [{ text: 'It is not installed.' }]
+                    }
+                  ]
+                }
+              ],
+              fixInstruction: ''
+            })
+          ]
+        }
+      }
+    })
+  )
+
+  render(<App />)
+
+  const applicationsRow = await screen.findByRole('button', {
+    name: /applications/i
+  })
+
+  await user.click(applicationsRow)
+
+  expect(
+    screen.getByText(
+      'You must install 2 of the applications: Bitdefender, Avast'
+    )
+  ).toBeInTheDocument()
+  expect(
+    screen.getByText('Only 1 is installed: Bitdefender')
+  ).toBeInTheDocument()
+  expect(
+    screen.getByText('You must install the application: AdvisorArmor2')
+  ).toBeInTheDocument()
+  expect(screen.getByText('It is not installed.')).toBeInTheDocument()
+})
+
 it('opens disk encryption settings from a scan row action', async () => {
   const user = userEvent.setup()
   const api = installDeviceWatch(

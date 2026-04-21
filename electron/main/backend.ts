@@ -262,10 +262,14 @@ function createMockBackend(): BackendApi {
     AppPolicy: {
       companyName: 'Demo Company',
       macPolicy: {
-        prohibitedApps: [{ AppName: 'ChatGPT' }],
+        prohibitedApps: [{ AppName: 'ChatGPT2' }, { AppName: 'AdvisorArmor2' }],
         requiredAppsCategories: [
           {
             apps: [{ AppName: 'Bitdefender' }, { AppName: 'Avast Security' }],
+            requiredAppsCount: '1'
+          },
+          {
+            apps: [{ AppName: 'AdvisorArmor2' }],
             requiredAppsCount: '1'
           }
         ]
@@ -275,6 +279,10 @@ function createMockBackend(): BackendApi {
         requiredAppsCategories: [
           {
             apps: [{ AppName: 'Microsoft Defender' }, { AppName: '1Password' }],
+            requiredAppsCount: '1'
+          },
+          {
+            apps: [{ AppName: 'AdvisorArmor2' }],
             requiredAppsCount: '1'
           }
         ]

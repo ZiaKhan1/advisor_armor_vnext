@@ -206,8 +206,11 @@ export interface ScanElementResult {
 
 export interface ScanElementDescriptionStep {
   text: string
+  secondaryText?: string
   unnumbered?: boolean
   bold?: boolean
+  dividerAbove?: boolean
+  childrenDisplay?: 'list' | 'stack'
   linkText?: string
   linkUrl?: string
   action?:

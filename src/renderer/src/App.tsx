@@ -535,19 +535,39 @@ function DescriptionBlock({
 }: {
   step: ScanElementDescriptionStep
 }): JSX.Element {
+  const containerClass = step.dividerAbove
+    ? 'mt-3 border-t border-slate-200 pt-3'
+    : 'mt-3'
+  const statusClass = step.status
+    ? statusTextClass(step.status)
+    : 'text-slate-800'
+
   return (
-    <div className="mt-3">
+    <div className={containerClass}>
       <p
-        className={`text-slate-800 ${step.bold ? 'font-bold' : 'font-medium'}`}
+        className={`${statusClass} ${step.bold ? 'font-bold' : 'font-medium'}`}
       >
         <DescriptionStepContent step={step} />
       </p>
       {step.children && step.children.length > 0 ? (
-        <ul className="mt-2 list-disc space-y-2 pl-5">
-          {step.children.map((child, index) => (
-            <DescriptionStep key={`${child.text}-${index}`} step={child} />
-          ))}
-        </ul>
+        step.childrenDisplay === 'stack' ? (
+          <div className="mt-1 text-slate-600">
+            {step.children.map((child, index) => (
+              <p
+                className={index === 0 ? '' : 'mt-1'}
+                key={`${child.text}-${index}`}
+              >
+                <DescriptionStepContent step={child} />
+              </p>
+            ))}
+          </div>
+        ) : (
+          <ul className="mt-2 list-disc space-y-2 pl-5">
+            {step.children.map((child, index) => (
+              <DescriptionStep key={`${child.text}-${index}`} step={child} />
+            ))}
+          </ul>
+        )
       ) : null}
     </div>
   )
@@ -587,11 +607,24 @@ function DescriptionStepContent({
   return (
     <>
       {step.status ? (
-        <span className="mr-2 font-bold">
+        <span
+          className={`mr-2 font-bold ${
+            step.status === FAIL
+              ? 'text-danger'
+              : step.status === NUDGE
+                ? 'text-warning'
+                : 'text-success'
+          }`}
+        >
           {step.status === FAIL ? '✕' : step.status === NUDGE ? '!' : '✓'}
         </span>
       ) : null}
       {step.text}
+      {step.secondaryText ? (
+        <span className={step.bold ? 'font-normal' : undefined}>
+          {step.secondaryText}
+        </span>
+      ) : null}
       {step.linkText && step.linkUrl ? (
         <a
           className="font-medium text-sky-700 underline underline-offset-2"
