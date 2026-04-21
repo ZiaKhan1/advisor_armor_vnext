@@ -442,6 +442,8 @@ function ScanRow({
   expanded: boolean
   onToggle: () => void
 }): JSX.Element {
+  const hasDescription = item.description.trim().length > 0
+
   return (
     <article className="overflow-hidden rounded-3xl bg-white shadow-panel">
       <button
@@ -463,12 +465,13 @@ function ScanRow({
         <ExpandChevron expanded={expanded} />
       </button>
       {expanded ? (
-        <div className="border-t border-slate-100 px-5 py-3 text-sm text-slate-600">
-          <p>{item.description}</p>
+        <div className="border-t border-slate-100 px-5 pb-3 pt-2 text-sm text-slate-600">
+          {hasDescription ? <p>{item.description}</p> : null}
           {item.descriptionSteps && item.descriptionSteps.length > 0 ? (
             <DescriptionSteps
               itemKey={item.key}
               steps={item.descriptionSteps}
+              compactTop={!hasDescription}
             />
           ) : null}
         </div>
@@ -479,14 +482,17 @@ function ScanRow({
 
 function DescriptionSteps({
   itemKey,
-  steps
+  steps,
+  compactTop = false
 }: {
   itemKey: string
   steps: ScanElementDescriptionStep[]
+  compactTop?: boolean
 }): JSX.Element {
   const elements: JSX.Element[] = []
   let orderedSteps: ScanElementDescriptionStep[] = []
   let orderedStart = 1
+  let isFirstGroup = true
 
   const flushOrderedSteps = (): void => {
     if (orderedSteps.length === 0) {
@@ -496,7 +502,7 @@ function DescriptionSteps({
     const firstStepNumber = orderedStart
     elements.push(
       <ol
-        className="mt-3 list-decimal space-y-1 pl-5"
+        className={`${compactTop && isFirstGroup ? '' : 'mt-3 '}list-decimal space-y-1 pl-5`}
         key={`${itemKey}-ordered-${firstStepNumber}`}
         start={firstStepNumber}
       >
@@ -511,14 +517,20 @@ function DescriptionSteps({
 
     orderedStart += orderedSteps.length
     orderedSteps = []
+    isFirstGroup = false
   }
 
   steps.forEach((step, index) => {
     if (step.unnumbered) {
       flushOrderedSteps()
       elements.push(
-        <DescriptionBlock key={`${itemKey}-block-${index}`} step={step} />
+        <DescriptionBlock
+          compactTop={compactTop && isFirstGroup}
+          key={`${itemKey}-block-${index}`}
+          step={step}
+        />
       )
+      isFirstGroup = false
       return
     }
 
@@ -531,13 +543,17 @@ function DescriptionSteps({
 }
 
 function DescriptionBlock({
-  step
+  step,
+  compactTop = false
 }: {
   step: ScanElementDescriptionStep
+  compactTop?: boolean
 }): JSX.Element {
   const containerClass = step.dividerAbove
     ? 'mt-3 border-t border-slate-200 pt-3'
-    : 'mt-3'
+    : compactTop
+      ? ''
+      : 'mt-3'
   const statusClass = step.status
     ? statusTextClass(step.status)
     : 'text-slate-800'

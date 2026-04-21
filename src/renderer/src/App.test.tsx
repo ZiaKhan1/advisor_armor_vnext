@@ -432,6 +432,75 @@ it('groups missing required application categories in the Applications details',
   expect(screen.getByText('It is not installed.')).toBeInTheDocument()
 })
 
+it('renders Applications details compactly when the description is empty', async () => {
+  const user = userEvent.setup()
+  installDeviceWatch(
+    createResultsState({
+      currentScan: {
+        startedAt: '2026-04-12T02:14:58.500Z',
+        durationMs: 1500,
+        companyName: 'Example Advice',
+        result: {
+          status: FAIL,
+          osVersion: PASS,
+          firewall: PASS,
+          diskEncryption: PASS,
+          winDefenderAV: PASS,
+          screenLock: PASS,
+          screenIdle: PASS,
+          automaticUpdates: PASS,
+          remoteLogin: PASS,
+          activeWifiNetwork: PASS,
+          knownWifiNetworks: PASS,
+          networkID: PASS,
+          networkIDInUse: '',
+          applications: FAIL,
+          appsPolicyResult: {
+            appsScanResult: FAIL,
+            installedProhibitedApps: ['ChatGPT'],
+            missingRequiredAppsCategories: []
+          },
+          elements: [
+            createScanElement({
+              key: 'applications',
+              title: 'Applications',
+              status: FAIL,
+              detail: 'There are applications installed which are prohibited.',
+              description: '',
+              descriptionSteps: [
+                {
+                  text: 'Prohibited Applications:',
+                  secondaryText: ' 1 prohibited application is installed',
+                  status: FAIL,
+                  unnumbered: true,
+                  bold: true,
+                  children: [{ text: 'ChatGPT' }]
+                }
+              ],
+              fixInstruction: ''
+            })
+          ]
+        }
+      }
+    })
+  )
+
+  const { container } = render(<App />)
+
+  const applicationsRow = await screen.findByRole('button', {
+    name: /applications/i
+  })
+
+  await user.click(applicationsRow)
+
+  const detailPanel = container.querySelector('.border-t.border-slate-100')
+  const emptyParagraph = detailPanel?.querySelector('p:empty')
+
+  expect(detailPanel).not.toBeNull()
+  expect(emptyParagraph).toBeNull()
+  expect(screen.getByText('Prohibited Applications:')).toBeInTheDocument()
+})
+
 it('opens disk encryption settings from a scan row action', async () => {
   const user = userEvent.setup()
   const api = installDeviceWatch(
