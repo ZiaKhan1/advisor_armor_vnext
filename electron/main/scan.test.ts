@@ -99,6 +99,7 @@ function createDevice(overrides: Partial<DeviceSnapshot> = {}): DeviceSnapshot {
     },
     networkIdInUse: '',
     installedApps: [],
+    appDetections: [],
     wifiConnections: [],
     screenIdleState: { kind: 'unknown' },
     screenIdleSeconds: null,
@@ -1506,6 +1507,709 @@ describe('evaluateDevice remote login result', () => {
       fixInstruction:
         'Open Advanced System Preferences and disable Remote Desktop connections.'
     })
+  })
+})
+
+describe('evaluateDevice Network ID result', () => {
+  it('passes when Network ID policy is PASS even if the current IP is not allowed', () => {
+    const result = evaluateDevice(
+      createDevice({ networkIdInUse: '2.2.2.2' }),
+      createPolicy({ networkId: PASS, networkIdIps: '1.1.1.1' })
+    )
+
+    const networkId = result.elements.find((item) => item.key === 'networkId')
+
+    expect(result.networkID).toBe(PASS)
+    expect(result.networkIDInUse).toBe('2.2.2.2')
+    expect(networkId).toMatchObject({
+      title: 'Network ID',
+      status: PASS,
+      detail: 'Network ID in use: 2.2.2.2',
+      description: 'Network ID matches an approved network.',
+      descriptionSteps: [
+        { text: 'Allowed Network IDs: 1.1.1.1', unnumbered: true }
+      ],
+      fixInstruction: 'No action required.'
+    })
+  })
+
+  it('passes when current IP is in the comma-separated allowed list', () => {
+    const result = evaluateDevice(
+      createDevice({ networkIdInUse: '2.2.2.2' }),
+      createPolicy({
+        networkId: FAIL,
+        networkIdIps: ' 1.1.1.1, 2.2.2.2, 3.3.3.3 '
+      })
+    )
+
+    const networkId = result.elements.find((item) => item.key === 'networkId')
+
+    expect(result.networkID).toBe(PASS)
+    expect(networkId).toMatchObject({
+      status: PASS,
+      detail: 'Network ID in use: 2.2.2.2',
+      descriptionSteps: [
+        {
+          text: 'Allowed Network IDs: 1.1.1.1, 2.2.2.2, 3.3.3.3',
+          unnumbered: true
+        }
+      ]
+    })
+  })
+
+  it('applies NUDGE when current IP is not in the allowed list', () => {
+    const result = evaluateDevice(
+      createDevice({ networkIdInUse: '4.4.4.4' }),
+      createPolicy({
+        networkId: NUDGE,
+        networkIdIps: '1.1.1.1, 2.2.2.2, 3.3.3.3'
+      })
+    )
+
+    const networkId = result.elements.find((item) => item.key === 'networkId')
+
+    expect(result.networkID).toBe(NUDGE)
+    expect(networkId).toMatchObject({
+      status: NUDGE,
+      detail:
+        'You are not connected to an approved network. Please contact your company administrator for further instructions.',
+      description: '',
+      descriptionSteps: [
+        { text: 'Network ID in use: 4.4.4.4', unnumbered: true },
+        {
+          text: 'Allowed Network IDs: 1.1.1.1, 2.2.2.2, 3.3.3.3',
+          unnumbered: true
+        }
+      ],
+      fixInstruction: 'Connect from an approved network.'
+    })
+  })
+
+  it('applies FAIL when allowed IPs are empty and policy requires enforcement', () => {
+    const result = evaluateDevice(
+      createDevice({ networkIdInUse: '2.2.2.2' }),
+      createPolicy({ networkId: FAIL, networkIdIps: '' })
+    )
+
+    const networkId = result.elements.find((item) => item.key === 'networkId')
+
+    expect(result.networkID).toBe(FAIL)
+    expect(networkId).toMatchObject({
+      status: FAIL,
+      detail:
+        'You are not connected to an approved network. Please contact your company administrator for further instructions.',
+      descriptionSteps: [
+        { text: 'Network ID in use: 2.2.2.2', unnumbered: true },
+        { text: 'Allowed Network IDs: Not configured', unnumbered: true }
+      ]
+    })
+  })
+
+  it('passes with an unknown message when current public IP cannot be determined', () => {
+    const result = evaluateDevice(
+      createDevice({ networkIdInUse: '' }),
+      createPolicy({ networkId: FAIL, networkIdIps: '1.1.1.1' })
+    )
+
+    const networkId = result.elements.find((item) => item.key === 'networkId')
+
+    expect(result.networkID).toBe(PASS)
+    expect(result.networkIDInUse).toBe('')
+    expect(networkId).toMatchObject({
+      status: PASS,
+      detail: 'Network ID could not be determined.',
+      description: 'Network ID could not be determined.',
+      descriptionSteps: [
+        { text: 'Network ID in use: Not available', unnumbered: true },
+        { text: 'Allowed Network IDs: 1.1.1.1', unnumbered: true }
+      ],
+      fixInstruction: 'Check your internet connection, then run the scan again.'
+    })
+  })
+})
+
+describe('evaluateDevice Applications result', () => {
+  it('fails when a prohibited app is installed', () => {
+    const result = evaluateDevice(
+      createDevice({
+        appDetections: [
+          {
+            policyAppName: 'ChatGPT',
+            folderPath: '',
+            appName: 'ChatGPT',
+            status: 'installed'
+          }
+        ]
+      }),
+      createPolicy({
+        appsPolicy: {
+          prohibitedApps: ['ChatGPT'],
+          requiredAppsCategories: []
+        }
+      })
+    )
+
+    const applications = result.elements.find(
+      (item) => item.key === 'applications'
+    )
+
+    expect(result.applications).toBe(FAIL)
+    expect(result.appsPolicyResult).toMatchObject({
+      appsScanResult: FAIL,
+      installedProhibitedApps: ['ChatGPT'],
+      missingRequiredAppsCategories: []
+    })
+    expect(applications).toMatchObject({
+      status: FAIL,
+      detail: 'There are applications installed which are prohibited.',
+      descriptionSteps: [
+        {
+          text: 'Prohibited Applications:',
+          secondaryText: ' 1 prohibited application is installed',
+          status: FAIL
+        },
+        {
+          children: [{ text: 'ChatGPT' }]
+        },
+        {
+          text: 'Required Applications:',
+          secondaryText: ' No required applications are missing',
+          status: PASS
+        }
+      ]
+    })
+  })
+
+  it('fails when a required app category does not meet the required count', () => {
+    const result = evaluateDevice(
+      createDevice({
+        appDetections: [
+          {
+            policyAppName: 'Bitdefender',
+            folderPath: '',
+            appName: 'Bitdefender',
+            status: 'installed'
+          },
+          {
+            policyAppName: 'Avast',
+            folderPath: '',
+            appName: 'Avast',
+            status: 'not-installed'
+          }
+        ]
+      }),
+      createPolicy({
+        appsPolicy: {
+          prohibitedApps: [],
+          requiredAppsCategories: [
+            { apps: ['Bitdefender', 'Avast'], requiredAppsCount: 2 }
+          ]
+        }
+      })
+    )
+
+    const applications = result.elements.find(
+      (item) => item.key === 'applications'
+    )
+
+    expect(result.applications).toBe(FAIL)
+    expect(result.appsPolicyResult.missingRequiredAppsCategories).toEqual([
+      'Bitdefender, Avast'
+    ])
+    expect(applications).toMatchObject({
+      status: FAIL,
+      detail: 'Some required applications are missing.',
+      descriptionSteps: [
+        {
+          text: 'Prohibited Applications:',
+          secondaryText: ' No prohibited application is installed',
+          status: PASS
+        },
+        {
+          text: 'Required Applications:',
+          secondaryText: ' Some required applications are missing',
+          status: FAIL,
+          children: [
+            {
+              text: 'You must install 2 of the applications: Bitdefender, Avast',
+              children: [{ text: 'Only 1 is installed: Bitdefender' }]
+            }
+          ]
+        }
+      ]
+    })
+  })
+
+  it('uses "None is installed." when no application from a multi-app category is installed', () => {
+    const result = evaluateDevice(
+      createDevice({
+        appDetections: [
+          {
+            policyAppName: 'Bitdefender',
+            folderPath: '',
+            appName: 'Bitdefender',
+            status: 'not-installed'
+          },
+          {
+            policyAppName: 'Avast Security',
+            folderPath: '',
+            appName: 'Avast Security',
+            status: 'not-installed'
+          }
+        ]
+      }),
+      createPolicy({
+        appsPolicy: {
+          prohibitedApps: [],
+          requiredAppsCategories: [
+            { apps: ['Bitdefender', 'Avast Security'], requiredAppsCount: 1 }
+          ]
+        }
+      })
+    )
+
+    const applications = result.elements.find(
+      (item) => item.key === 'applications'
+    )
+
+    expect(applications).toMatchObject({
+      descriptionSteps: [
+        {
+          text: 'Prohibited Applications:',
+          secondaryText: ' No prohibited application is installed',
+          status: PASS
+        },
+        {
+          text: 'Required Applications:',
+          secondaryText: ' Some required applications are missing',
+          status: FAIL,
+          children: [
+            {
+              text: 'You must install 1 of the applications: Bitdefender, Avast Security',
+              children: [{ text: 'None is installed.' }]
+            }
+          ]
+        }
+      ]
+    })
+  })
+
+  it('does not penalize unknown prohibited and required app checks', () => {
+    const result = evaluateDevice(
+      createDevice({
+        appDetections: [
+          {
+            policyAppName: 'ChatGPT',
+            folderPath: '',
+            appName: 'ChatGPT',
+            status: 'unknown'
+          },
+          {
+            policyAppName: 'Bitdefender',
+            folderPath: '',
+            appName: 'Bitdefender',
+            status: 'unknown'
+          }
+        ]
+      }),
+      createPolicy({
+        appsPolicy: {
+          prohibitedApps: ['ChatGPT'],
+          requiredAppsCategories: [
+            { apps: ['Bitdefender'], requiredAppsCount: 1 }
+          ]
+        }
+      })
+    )
+
+    const applications = result.elements.find(
+      (item) => item.key === 'applications'
+    )
+
+    expect(result.applications).toBe(PASS)
+    expect(result.appsPolicyResult).toMatchObject({
+      appsScanResult: PASS,
+      installedProhibitedApps: [],
+      missingRequiredAppsCategories: []
+    })
+    expect(applications).toMatchObject({
+      status: PASS,
+      detail:
+        'The applet could not determine whether some prohibited applications are installed. The applet could not determine whether some required applications are installed.',
+      descriptionSteps: [
+        {
+          text: 'Prohibited Applications:',
+          secondaryText: ' No prohibited application is installed',
+          status: PASS
+        },
+        {
+          text: 'Required Applications:',
+          secondaryText: ' No required applications are missing',
+          status: PASS
+        },
+        {
+          text: 'The applet could not determine whether the following prohibited applications are installed. Please make sure they are not installed:',
+          children: [{ text: 'ChatGPT' }]
+        },
+        {
+          text: 'The applet could not determine whether the following required applications are installed. Please make sure they are installed:',
+          children: [{ text: 'Bitdefender' }]
+        }
+      ]
+    })
+  })
+
+  it('counts unknown required apps toward the category requirement while still showing advisory text', () => {
+    const result = evaluateDevice(
+      createDevice({
+        appDetections: [
+          {
+            policyAppName: 'Bitdefender',
+            folderPath: '',
+            appName: 'Bitdefender',
+            status: 'installed'
+          },
+          {
+            policyAppName: '1Password',
+            folderPath: '',
+            appName: '1Password',
+            status: 'unknown'
+          },
+          {
+            policyAppName: 'Avast',
+            folderPath: '',
+            appName: 'Avast',
+            status: 'not-installed'
+          }
+        ]
+      }),
+      createPolicy({
+        appsPolicy: {
+          prohibitedApps: [],
+          requiredAppsCategories: [
+            {
+              apps: ['Bitdefender', '1Password', 'Avast'],
+              requiredAppsCount: 2
+            }
+          ]
+        }
+      })
+    )
+
+    const applications = result.elements.find(
+      (item) => item.key === 'applications'
+    )
+
+    expect(result.applications).toBe(PASS)
+    expect(result.appsPolicyResult).toMatchObject({
+      appsScanResult: PASS,
+      installedProhibitedApps: [],
+      missingRequiredAppsCategories: []
+    })
+    expect(applications).toMatchObject({
+      status: PASS,
+      detail:
+        'The applet could not determine whether some required applications are installed.',
+      descriptionSteps: [
+        {
+          text: 'Prohibited Applications:',
+          secondaryText: ' No prohibited application is installed',
+          status: PASS
+        },
+        {
+          text: 'Required Applications:',
+          secondaryText: ' No required applications are missing',
+          status: PASS
+        },
+        {
+          text: 'The applet could not determine whether the following required applications are installed. Please make sure they are installed:',
+          children: [{ text: '1Password' }]
+        }
+      ]
+    })
+  })
+
+  it('uses a combined short summary when both prohibited and required issues exist', () => {
+    const result = evaluateDevice(
+      createDevice({
+        appDetections: [
+          {
+            policyAppName: 'ChatGPT',
+            folderPath: '',
+            appName: 'ChatGPT',
+            status: 'installed'
+          },
+          {
+            policyAppName: 'Bitdefender',
+            folderPath: '',
+            appName: 'Bitdefender',
+            status: 'not-installed'
+          }
+        ]
+      }),
+      createPolicy({
+        appsPolicy: {
+          prohibitedApps: ['ChatGPT'],
+          requiredAppsCategories: [
+            { apps: ['Bitdefender'], requiredAppsCount: 1 }
+          ]
+        }
+      })
+    )
+
+    const applications = result.elements.find(
+      (item) => item.key === 'applications'
+    )
+
+    expect(applications).toMatchObject({
+      detail:
+        'There are applications installed which are prohibited. Also, some required applications are missing.'
+    })
+  })
+
+  it('repeats required application guidance for each missing category', () => {
+    const result = evaluateDevice(
+      createDevice({
+        appDetections: [
+          {
+            policyAppName: 'App1',
+            folderPath: '',
+            appName: 'App1',
+            status: 'installed'
+          },
+          {
+            policyAppName: 'App2',
+            folderPath: '',
+            appName: 'App2',
+            status: 'not-installed'
+          },
+          {
+            policyAppName: 'App3',
+            folderPath: '',
+            appName: 'App3',
+            status: 'not-installed'
+          },
+          {
+            policyAppName: 'App4',
+            folderPath: '',
+            appName: 'App4',
+            status: 'not-installed'
+          },
+          {
+            policyAppName: 'AdvisorArmor2',
+            folderPath: '',
+            appName: 'AdvisorArmor2',
+            status: 'not-installed'
+          }
+        ]
+      }),
+      createPolicy({
+        appsPolicy: {
+          prohibitedApps: [],
+          requiredAppsCategories: [
+            {
+              apps: ['App1', 'App2', 'App3', 'App4'],
+              requiredAppsCount: 4
+            },
+            {
+              apps: ['AdvisorArmor2'],
+              requiredAppsCount: 1
+            }
+          ]
+        }
+      })
+    )
+
+    const applications = result.elements.find(
+      (item) => item.key === 'applications'
+    )
+
+    expect(applications).toMatchObject({
+      descriptionSteps: [
+        {
+          text: 'Prohibited Applications:',
+          secondaryText: ' No prohibited application is installed',
+          status: PASS
+        },
+        {
+          text: 'Required Applications:',
+          secondaryText: ' Some required applications are missing',
+          status: FAIL,
+          children: [
+            {
+              text: 'You must install 4 of the applications: App1, App2, App3, App4',
+              children: [{ text: 'Only 1 is installed: App1' }]
+            },
+            {
+              text: 'You must install the application: AdvisorArmor2',
+              children: [{ text: 'It is not installed.' }]
+            }
+          ]
+        }
+      ]
+    })
+  })
+
+  it('does not repeat unknown summaries when known prohibited and required issues already exist', () => {
+    const result = evaluateDevice(
+      createDevice({
+        appDetections: [
+          {
+            policyAppName: 'ChatGPT',
+            folderPath: '',
+            appName: 'ChatGPT',
+            status: 'installed'
+          },
+          {
+            policyAppName: 'Slack',
+            folderPath: '',
+            appName: 'Slack',
+            status: 'unknown'
+          },
+          {
+            policyAppName: 'Bitdefender',
+            folderPath: '',
+            appName: 'Bitdefender',
+            status: 'not-installed'
+          },
+          {
+            policyAppName: '1Password',
+            folderPath: '',
+            appName: '1Password',
+            status: 'unknown'
+          }
+        ]
+      }),
+      createPolicy({
+        appsPolicy: {
+          prohibitedApps: ['ChatGPT', 'Slack'],
+          requiredAppsCategories: [
+            { apps: ['Bitdefender', '1Password'], requiredAppsCount: 2 }
+          ]
+        }
+      })
+    )
+
+    const applications = result.elements.find(
+      (item) => item.key === 'applications'
+    )
+
+    expect(applications).toMatchObject({
+      detail:
+        'There are applications installed which are prohibited. Also, some required applications are missing.'
+    })
+  })
+})
+
+describe('evaluateDevice Windows Defender AV result', () => {
+  it('passes when Microsoft Defender real-time protection is enabled', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: true
+      }),
+      createPolicy({ winDefenderAV: FAIL })
+    )
+
+    const antivirus = result.elements.find(
+      (item) => item.key === 'winDefenderAV'
+    )
+
+    expect(result.winDefenderAV).toBe(PASS)
+    expect(antivirus).toMatchObject({
+      title: 'Antivirus',
+      status: PASS,
+      detail:
+        'Antivirus is currently providing real-time protection on your system.',
+      descriptionSteps: [
+        {
+          text: 'Click ',
+          linkText: 'here',
+          linkUrl: 'windowsdefender://threat',
+          suffix: ' to check other antivirus protection settings.'
+        }
+      ],
+      description:
+        'Real-time protection helps detect and block malware before it can install or run on your device.',
+      fixInstruction: 'No action required.'
+    })
+  })
+
+  it('fails when Microsoft Defender real-time protection is disabled', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: false
+      }),
+      createPolicy({ winDefenderAV: FAIL })
+    )
+
+    const antivirus = result.elements.find(
+      (item) => item.key === 'winDefenderAV'
+    )
+
+    expect(result.winDefenderAV).toBe(FAIL)
+    expect(antivirus).toMatchObject({
+      status: FAIL,
+      detail:
+        'Antivirus is not currently providing real-time protection on your system.',
+      descriptionSteps: [
+        {
+          text: 'Click ',
+          linkText: 'here',
+          linkUrl: 'windowsdefender://threatsettings/',
+          suffix: ' to turn on real-time protection.'
+        }
+      ],
+      fixInstruction:
+        'Open Virus & threat protection settings and turn on real-time protection.'
+    })
+  })
+
+  it('does not penalize the user when Microsoft Defender status cannot be determined', () => {
+    const result = evaluateDevice(
+      createDevice({
+        platformName: 'Microsoft',
+        platform: 'win32',
+        winDefenderEnabled: null
+      }),
+      createPolicy({ winDefenderAV: FAIL })
+    )
+
+    const antivirus = result.elements.find(
+      (item) => item.key === 'winDefenderAV'
+    )
+
+    expect(result.winDefenderAV).toBe(PASS)
+    expect(antivirus).toMatchObject({
+      status: PASS,
+      detail:
+        'Antivirus is not currently providing real-time protection on your system.',
+      descriptionSteps: [
+        {
+          text: 'If you are using another antivirus program, please make sure it is actively running and providing real-time protection. Click ',
+          linkText: 'here',
+          linkUrl: 'windowsdefender://threat',
+          suffix: ' to open the Virus and threat protection settings.'
+        }
+      ],
+      fixInstruction:
+        'If you are using another antivirus program, make sure it is actively running and providing real-time protection.'
+    })
+  })
+
+  it('does not add an Antivirus row on macOS', () => {
+    const result = evaluateDevice(
+      createDevice(),
+      createPolicy({ winDefenderAV: FAIL })
+    )
+
+    expect(result.winDefenderAV).toBe(PASS)
+    expect(
+      result.elements.find((item) => item.key === 'winDefenderAV')
+    ).toBeUndefined()
   })
 })
 

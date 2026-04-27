@@ -442,6 +442,8 @@ function ScanRow({
   expanded: boolean
   onToggle: () => void
 }): JSX.Element {
+  const hasDescription = item.description.trim().length > 0
+
   return (
     <article className="overflow-hidden rounded-3xl bg-white shadow-panel">
       <button
@@ -463,29 +465,15 @@ function ScanRow({
         <ExpandChevron expanded={expanded} />
       </button>
       {expanded ? (
-        <div className="border-t border-slate-100 px-5 py-3 text-sm text-slate-600">
-          <p>{item.description}</p>
+        <div className="border-t border-slate-100 px-5 pb-3 pt-2 text-sm text-slate-600">
+          {hasDescription ? <p>{item.description}</p> : null}
           {item.descriptionSteps && item.descriptionSteps.length > 0 ? (
             <DescriptionSteps
               itemKey={item.key}
               steps={item.descriptionSteps}
+              compactTop={!hasDescription}
             />
           ) : null}
-          {item.key === 'firewall' ||
-          item.key === 'diskEncryption' ||
-          item.key === 'automaticUpdates' ||
-          item.key === 'remoteLogin' ||
-          item.key === 'screenIdle' ||
-          item.key === 'screenLock' ||
-          item.key === 'activeWifiNetwork' ||
-          item.key === 'knownWifiNetworks' ? null : (
-            <>
-              <p className="mt-2 font-medium text-slate-800">
-                Recommended action
-              </p>
-              <p className="mt-1">{item.fixInstruction}</p>
-            </>
-          )}
         </div>
       ) : null}
     </article>
@@ -494,14 +482,17 @@ function ScanRow({
 
 function DescriptionSteps({
   itemKey,
-  steps
+  steps,
+  compactTop = false
 }: {
   itemKey: string
   steps: ScanElementDescriptionStep[]
+  compactTop?: boolean
 }): JSX.Element {
   const elements: JSX.Element[] = []
   let orderedSteps: ScanElementDescriptionStep[] = []
   let orderedStart = 1
+  let isFirstGroup = true
 
   const flushOrderedSteps = (): void => {
     if (orderedSteps.length === 0) {
@@ -511,7 +502,7 @@ function DescriptionSteps({
     const firstStepNumber = orderedStart
     elements.push(
       <ol
-        className="mt-3 list-decimal space-y-1 pl-5"
+        className={`${compactTop && isFirstGroup ? '' : 'mt-3 '}list-decimal space-y-1 pl-5`}
         key={`${itemKey}-ordered-${firstStepNumber}`}
         start={firstStepNumber}
       >
@@ -526,14 +517,20 @@ function DescriptionSteps({
 
     orderedStart += orderedSteps.length
     orderedSteps = []
+    isFirstGroup = false
   }
 
   steps.forEach((step, index) => {
     if (step.unnumbered) {
       flushOrderedSteps()
       elements.push(
-        <DescriptionBlock key={`${itemKey}-block-${index}`} step={step} />
+        <DescriptionBlock
+          compactTop={compactTop && isFirstGroup}
+          key={`${itemKey}-block-${index}`}
+          step={step}
+        />
       )
+      isFirstGroup = false
       return
     }
 
@@ -546,23 +543,47 @@ function DescriptionSteps({
 }
 
 function DescriptionBlock({
-  step
+  step,
+  compactTop = false
 }: {
   step: ScanElementDescriptionStep
+  compactTop?: boolean
 }): JSX.Element {
+  const containerClass = step.dividerAbove
+    ? 'mt-3 border-t border-slate-200 pt-3'
+    : compactTop
+      ? ''
+      : 'mt-3'
+  const statusClass = step.status
+    ? statusTextClass(step.status)
+    : 'text-slate-800'
+
   return (
-    <div className="mt-3">
+    <div className={containerClass}>
       <p
-        className={`text-slate-800 ${step.bold ? 'font-bold' : 'font-medium'}`}
+        className={`${statusClass} ${step.bold ? 'font-bold' : 'font-medium'}`}
       >
-        {step.text}
+        <DescriptionStepContent step={step} />
       </p>
       {step.children && step.children.length > 0 ? (
-        <ul className="mt-2 list-disc space-y-2 pl-5">
-          {step.children.map((child, index) => (
-            <DescriptionStep key={`${child.text}-${index}`} step={child} />
-          ))}
-        </ul>
+        step.childrenDisplay === 'stack' ? (
+          <div className="mt-1 text-slate-600">
+            {step.children.map((child, index) => (
+              <p
+                className={index === 0 ? '' : 'mt-1'}
+                key={`${child.text}-${index}`}
+              >
+                <DescriptionStepContent step={child} />
+              </p>
+            ))}
+          </div>
+        ) : (
+          <ul className="mt-2 list-disc space-y-2 pl-5">
+            {step.children.map((child, index) => (
+              <DescriptionStep key={`${child.text}-${index}`} step={child} />
+            ))}
+          </ul>
+        )
       ) : null}
     </div>
   )
@@ -576,49 +597,7 @@ function DescriptionStep({
   return (
     <li>
       <span className={step.status ? statusTextClass(step.status) : undefined}>
-        {step.status ? (
-          <span className="mr-2 font-bold">
-            {step.status === FAIL ? '✕' : step.status === NUDGE ? '!' : '✓'}
-          </span>
-        ) : null}
-        {step.text}
-        {step.linkText && step.linkUrl ? (
-          <a
-            className="font-medium text-sky-700 underline underline-offset-2"
-            href={step.linkUrl}
-            rel="noreferrer"
-            target="_blank"
-          >
-            {step.linkText}
-          </a>
-        ) : step.linkText && step.action ? (
-          <button
-            className="font-medium text-sky-700 underline underline-offset-2"
-            type="button"
-            onClick={() => {
-              if (step.action === 'openFirewallSettings') {
-                void window.deviceWatch.openFirewallSettings()
-                return
-              }
-              if (step.action === 'openDiskEncryptionSettings') {
-                void window.deviceWatch.openDiskEncryptionSettings()
-                return
-              }
-              if (step.action === 'openAppStore') {
-                void window.deviceWatch.openAppStore()
-                return
-              }
-              if (step.action === 'openWifiSettings') {
-                void window.deviceWatch.openWifiSettings()
-                return
-              }
-              void window.deviceWatch.openRemoteLoginSettings()
-            }}
-          >
-            {step.linkText}
-          </button>
-        ) : null}
-        {step.suffix}
+        <DescriptionStepContent step={step} />
       </span>
       {step.note ? (
         <ul className="mt-1 list-disc pl-5 text-slate-500">
@@ -633,6 +612,75 @@ function DescriptionStep({
         </ul>
       ) : null}
     </li>
+  )
+}
+
+function DescriptionStepContent({
+  step
+}: {
+  step: ScanElementDescriptionStep
+}): JSX.Element {
+  return (
+    <>
+      {step.status ? (
+        <span
+          className={`mr-2 font-bold ${
+            step.status === FAIL
+              ? 'text-danger'
+              : step.status === NUDGE
+                ? 'text-warning'
+                : 'text-success'
+          }`}
+        >
+          {step.status === FAIL ? '✕' : step.status === NUDGE ? '!' : '✓'}
+        </span>
+      ) : null}
+      {step.text}
+      {step.secondaryText ? (
+        <span
+          className={`text-slate-600 ${step.bold ? 'font-normal' : ''}`.trim()}
+        >
+          {step.secondaryText}
+        </span>
+      ) : null}
+      {step.linkText && step.linkUrl ? (
+        <a
+          className="font-medium text-sky-700 underline underline-offset-2"
+          href={step.linkUrl}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {step.linkText}
+        </a>
+      ) : step.linkText && step.action ? (
+        <button
+          className="font-medium text-sky-700 underline underline-offset-2"
+          type="button"
+          onClick={() => {
+            if (step.action === 'openFirewallSettings') {
+              void window.deviceWatch.openFirewallSettings()
+              return
+            }
+            if (step.action === 'openDiskEncryptionSettings') {
+              void window.deviceWatch.openDiskEncryptionSettings()
+              return
+            }
+            if (step.action === 'openAppStore') {
+              void window.deviceWatch.openAppStore()
+              return
+            }
+            if (step.action === 'openWifiSettings') {
+              void window.deviceWatch.openWifiSettings()
+              return
+            }
+            void window.deviceWatch.openRemoteLoginSettings()
+          }}
+        >
+          {step.linkText}
+        </button>
+      ) : null}
+      {step.suffix}
+    </>
   )
 }
 

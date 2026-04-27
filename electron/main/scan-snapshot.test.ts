@@ -23,7 +23,9 @@ const scanCheckMocks = vi.hoisted(() => ({
   readScreenIdle: vi.fn(),
   readScreenLock: vi.fn(),
   readActiveWifiSnapshot: vi.fn(),
-  readKnownWifiSnapshot: vi.fn()
+  readKnownWifiSnapshot: vi.fn(),
+  readWindowsDefenderEnabled: vi.fn(),
+  readPolicyAppDetections: vi.fn()
 }))
 
 vi.mock('node:os', () => osMocks)
@@ -74,6 +76,14 @@ vi.mock('./scan-checks/known-wifi', () => ({
   readKnownWifiSnapshot: scanCheckMocks.readKnownWifiSnapshot
 }))
 
+vi.mock('./scan-checks/windows-defender', () => ({
+  readWindowsDefenderEnabled: scanCheckMocks.readWindowsDefenderEnabled
+}))
+
+vi.mock('./scan-checks/installed-apps', () => ({
+  readPolicyAppDetections: scanCheckMocks.readPolicyAppDetections
+}))
+
 const automaticUpdates: AutomaticUpdatesSnapshot = {
   enabled: false,
   checks: [
@@ -103,6 +113,15 @@ describe('readDeviceSnapshot', () => {
       kind: 'seconds',
       seconds: 5
     })
+    scanCheckMocks.readWindowsDefenderEnabled.mockResolvedValue(null)
+    scanCheckMocks.readPolicyAppDetections.mockResolvedValue([
+      {
+        policyAppName: 'Safari',
+        folderPath: '',
+        appName: 'Safari',
+        status: 'installed'
+      }
+    ])
     scanCheckMocks.readActiveWifiSnapshot.mockResolvedValue({
       facts: {
         ssid: 'OfficeNet',
@@ -151,6 +170,10 @@ describe('readDeviceSnapshot', () => {
     expect(scanCheckMocks.readScreenLock).toHaveBeenCalledWith('darwin')
     expect(scanCheckMocks.readActiveWifiSnapshot).toHaveBeenCalledWith('darwin')
     expect(scanCheckMocks.readKnownWifiSnapshot).toHaveBeenCalledWith('darwin')
+    expect(scanCheckMocks.readWindowsDefenderEnabled).toHaveBeenCalledWith(
+      'darwin'
+    )
+    expect(scanCheckMocks.readPolicyAppDetections).not.toHaveBeenCalled()
 
     expect(snapshot).toMatchObject({
       deviceName: 'test-host',
@@ -164,6 +187,7 @@ describe('readDeviceSnapshot', () => {
       automaticUpdates,
       automaticUpdatesEnabled: false,
       remoteLoginEnabled: true,
+      winDefenderEnabled: null,
       activeWifiSecure: true,
       activeWifiAssessment: {
         status: 'secure',
@@ -204,5 +228,62 @@ describe('readDeviceSnapshot', () => {
       screenLockSeconds: 5,
       networkIdInUse: '203.0.113.10'
     })
+  })
+
+  it('reads policy-targeted app detections when app policy is provided', async () => {
+    const { readDeviceSnapshot } = await import('./scan')
+
+    const snapshot = await readDeviceSnapshot({
+      prohibitedApps: ['Safari'],
+      requiredAppsCategories: []
+    })
+
+    expect(scanCheckMocks.readPolicyAppDetections).toHaveBeenCalledWith(
+      'darwin',
+      {
+        prohibitedApps: ['Safari'],
+        requiredAppsCategories: []
+      }
+    )
+    expect(snapshot.installedApps).toEqual(['Safari'])
+    expect(snapshot.appDetections).toEqual([
+      {
+        policyAppName: 'Safari',
+        folderPath: '',
+        appName: 'Safari',
+        status: 'installed'
+      }
+    ])
+  })
+
+  it('uses the fallback public IP URL when the primary lookup fails', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        text: async () => ''
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () => '198.51.100.25\n'
+      })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { readDeviceSnapshot } = await import('./scan')
+
+    const snapshot = await readDeviceSnapshot()
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(snapshot.networkIdInUse).toBe('198.51.100.25')
+  })
+
+  it('leaves Network ID empty when public IP lookup fails', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+
+    const { readDeviceSnapshot } = await import('./scan')
+
+    const snapshot = await readDeviceSnapshot()
+
+    expect(snapshot.networkIdInUse).toBe('')
   })
 })

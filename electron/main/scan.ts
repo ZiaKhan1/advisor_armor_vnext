@@ -1,6 +1,8 @@
 import { hostname, machine, platform, release } from 'node:os'
 import type {
   DeviceSnapshot,
+  AppDetectionStatus,
+  PolicyAppDetection,
   ActiveWifiAssessment,
   KnownWifiAssessment,
   NormalizedPolicy,
@@ -23,6 +25,8 @@ import { readRemoteLoginEnabled } from './scan-checks/remote-login'
 import { readScreenIdle, readScreenLock } from './scan-checks/screen-security'
 import { readActiveWifiSnapshot } from './scan-checks/active-wifi'
 import { readKnownWifiSnapshot } from './scan-checks/known-wifi'
+import { readWindowsDefenderEnabled } from './scan-checks/windows-defender'
+import { readPolicyAppDetections } from './scan-checks/installed-apps'
 
 const FIREWALL_DESCRIPTION =
   'Firewalls control network traffic into and out of a system. Enabling the firewall on your device can prevent network-based attacks on your system and is especially important if you make use of unsecured wireless networks (such as at coffee shops and airports).'
@@ -48,6 +52,11 @@ const ACTIVE_WIFI_DESCRIPTION =
   'Use Wi-Fi networks that require a password and use WPA2 or WPA3 security. Networks that do not require a password or use older security can put your device at risk.'
 const KNOWN_WIFI_DESCRIPTION =
   'Saved Wi-Fi networks can be reused later by the device. Remove saved networks that do not require a password or that use outdated Wi-Fi security.'
+const WINDOWS_DEFENDER_DESCRIPTION =
+  'Real-time protection helps detect and block malware before it can install or run on your device.'
+const NETWORK_ID_UNAPPROVED_MESSAGE =
+  'You are not connected to an approved network. Please contact your company administrator for further instructions.'
+const NETWORK_ID_UNKNOWN_MESSAGE = 'Network ID could not be determined.'
 
 async function resolvePublicIp(): Promise<string> {
   for (const url of [
@@ -66,7 +75,9 @@ async function resolvePublicIp(): Promise<string> {
   return ''
 }
 
-export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
+export async function readDeviceSnapshot(
+  appsPolicy?: NormalizedPolicy['appsPolicy']
+): Promise<DeviceSnapshot> {
   const currentPlatform = platform()
   const publicIp = await resolvePublicIp()
   const firewallEnabled = await readFirewallEnabled(currentPlatform)
@@ -78,6 +89,10 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
   const screenLockState = await readScreenLock(currentPlatform)
   const activeWifi = await readActiveWifiSnapshot(currentPlatform)
   const knownWifi = await readKnownWifiSnapshot(currentPlatform)
+  const winDefenderEnabled = await readWindowsDefenderEnabled(currentPlatform)
+  const appDetections = appsPolicy
+    ? await readPolicyAppDetections(currentPlatform, appsPolicy)
+    : []
 
   const wifiConnections: WifiConnection[] = [
     {
@@ -113,7 +128,7 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
     automaticUpdates,
     automaticUpdatesEnabled: automaticUpdates.enabled,
     remoteLoginEnabled,
-    winDefenderEnabled: currentPlatform === 'win32' ? true : null,
+    winDefenderEnabled,
     activeWifiSecure:
       activeWifi.assessment.status === 'unknown'
         ? null
@@ -125,8 +140,10 @@ export async function readDeviceSnapshot(): Promise<DeviceSnapshot> {
         : knownWifi.assessment.status === 'secure',
     knownWifiAssessment: knownWifi.assessment,
     networkIdInUse: publicIp,
-    installedApps:
-      currentPlatform === 'darwin' ? ['Safari'] : ['Microsoft Defender'],
+    installedApps: appDetections
+      .filter((app) => app.status === 'installed')
+      .map((app) => app.policyAppName),
+    appDetections,
     wifiConnections,
     screenIdleState,
     screenIdleSeconds:
@@ -278,30 +295,65 @@ export function evaluateDevice(
     policy.knownWifiNetworks,
     device.knownWifiSecure
   )
-  const networkID =
-    policy.networkIdIps
-      .split(',')
-      .map((ip) => ip.trim())
-      .filter(Boolean)
-      .includes(device.networkIdInUse) || policy.networkId === PASS
-      ? PASS
-      : policy.networkId
-
-  const installedProhibitedApps = device.installedApps.filter((app) =>
-    policy.appsPolicy.prohibitedApps.some(
-      (prohibited) => prohibited.toLowerCase() === app.toLowerCase()
-    )
+  const networkID = evaluateNetworkId(
+    policy.networkId,
+    policy.networkIdIps,
+    device.networkIdInUse
   )
-  const missingRequiredAppsCategories = policy.appsPolicy.requiredAppsCategories
-    .filter((category) => {
-      const installed = category.apps.filter((appName) =>
-        device.installedApps.some(
-          (installedApp) => installedApp.toLowerCase() === appName.toLowerCase()
+
+  const appDetectionLookup = getAppDetectionLookup(device.appDetections)
+  const installedProhibitedApps = policy.appsPolicy.prohibitedApps.filter(
+    (appName) =>
+      getPolicyAppStatus(appDetectionLookup, appName, device.installedApps) ===
+      'installed'
+  )
+  const unknownProhibitedApps = policy.appsPolicy.prohibitedApps.filter(
+    (appName) =>
+      getPolicyAppStatus(appDetectionLookup, appName, device.installedApps) ===
+      'unknown'
+  )
+  const missingRequiredAppsCategoryDetails =
+    policy.appsPolicy.requiredAppsCategories
+      .map((category) => {
+        const satisfiedApps = category.apps.filter((appName) =>
+          isRequiredPolicyAppSatisfied(appDetectionLookup, appName, device)
+        )
+        const installedApps = category.apps.filter(
+          (appName) =>
+            getPolicyAppStatus(
+              appDetectionLookup,
+              appName,
+              device.installedApps
+            ) === 'installed'
+        )
+
+        return {
+          requiredAppsCount: category.requiredAppsCount,
+          requiredApps: category.apps,
+          satisfiedApps,
+          installedApps
+        }
+      })
+      .filter(
+        (category) => category.satisfiedApps.length < category.requiredAppsCount
+      )
+  const missingRequiredAppsCategories = missingRequiredAppsCategoryDetails.map(
+    (category) => category.requiredApps.join(', ')
+  )
+  const unknownRequiredApps = [
+    ...new Set(
+      policy.appsPolicy.requiredAppsCategories.flatMap((category) =>
+        category.apps.filter(
+          (appName) =>
+            getPolicyAppStatus(
+              appDetectionLookup,
+              appName,
+              device.installedApps
+            ) === 'unknown'
         )
       )
-      return installed.length < category.requiredAppsCount
-    })
-    .map((category) => category.apps.join(', '))
+    )
+  ]
 
   const applications =
     installedProhibitedApps.length === 0 &&
@@ -425,6 +477,19 @@ export function evaluateDevice(
       REMOTE_LOGIN_DESCRIPTION,
       getRemoteLoginDescriptionSteps(device.platform)
     ),
+    ...(device.platform === 'win32'
+      ? [
+          buildElement(
+            'winDefenderAV',
+            'Antivirus',
+            winDefenderAV,
+            describeWindowsDefenderState(device.winDefenderEnabled),
+            recommendWindowsDefenderAction(device.winDefenderEnabled),
+            WINDOWS_DEFENDER_DESCRIPTION,
+            getWindowsDefenderDescriptionSteps(device.winDefenderEnabled)
+          )
+        ]
+      : []),
     buildElement(
       'activeWifiNetwork',
       'Active Wi-Fi Network',
@@ -450,17 +515,42 @@ export function evaluateDevice(
       'networkId',
       'Network ID',
       networkID,
-      device.networkIdInUse
-        ? `Public IP: ${device.networkIdInUse}`
-        : 'Public IP unavailable.',
-      'Connect from an approved network.'
+      describeNetworkIdState(
+        networkID,
+        policy.networkId,
+        policy.networkIdIps,
+        device.networkIdInUse
+      ),
+      recommendNetworkIdAction(networkID, device.networkIdInUse),
+      getNetworkIdDescription(
+        networkID,
+        policy.networkIdIps,
+        device.networkIdInUse
+      ),
+      getNetworkIdDescriptionSteps(
+        networkID,
+        policy.networkIdIps,
+        device.networkIdInUse
+      )
     ),
     buildElement(
       'applications',
       'Applications',
       applications,
-      describeAppState(installedProhibitedApps, missingRequiredAppsCategories),
-      'Remove prohibited applications and install required security tools.'
+      describeAppSummary(
+        installedProhibitedApps,
+        missingRequiredAppsCategories,
+        unknownProhibitedApps,
+        unknownRequiredApps
+      ),
+      'Remove prohibited applications and install required security tools.',
+      '',
+      getAppDescriptionSteps(
+        installedProhibitedApps,
+        missingRequiredAppsCategoryDetails,
+        unknownProhibitedApps,
+        unknownRequiredApps
+      )
     )
   ]
 
@@ -506,6 +596,99 @@ function buildElement(
     detail,
     fixInstruction
   }
+}
+
+function parseNetworkIdIps(networkIdIps: string): string[] {
+  return networkIdIps
+    .split(',')
+    .map((ip) => ip.trim())
+    .filter(Boolean)
+}
+
+function evaluateNetworkId(
+  policyStatus: PolicyStatus,
+  networkIdIps: string,
+  networkIdInUse: string
+): PolicyStatus {
+  if (!networkIdInUse) {
+    return PASS
+  }
+
+  if (policyStatus === PASS) {
+    return PASS
+  }
+
+  const allowedIps = parseNetworkIdIps(networkIdIps)
+
+  if (allowedIps.length === 0) {
+    return policyStatus
+  }
+
+  return allowedIps.includes(networkIdInUse) ? PASS : policyStatus
+}
+
+function describeNetworkIdState(
+  result: PolicyStatus,
+  policyStatus: PolicyStatus,
+  networkIdIps: string,
+  networkIdInUse: string
+): string {
+  if (!networkIdInUse) {
+    return NETWORK_ID_UNKNOWN_MESSAGE
+  }
+
+  if (result !== PASS) {
+    return NETWORK_ID_UNAPPROVED_MESSAGE
+  }
+
+  if (policyStatus === PASS || parseNetworkIdIps(networkIdIps).length > 0) {
+    return `Network ID in use: ${networkIdInUse}`
+  }
+
+  return NETWORK_ID_UNKNOWN_MESSAGE
+}
+
+function getNetworkIdDescriptionSteps(
+  result: PolicyStatus,
+  networkIdIps: string,
+  networkIdInUse: string
+): ScanElementDescriptionStep[] {
+  const allowedIps = parseNetworkIdIps(networkIdIps)
+  const steps: ScanElementDescriptionStep[] = []
+
+  if (!networkIdInUse || result !== PASS) {
+    steps.push({
+      text: `Network ID in use: ${networkIdInUse || 'Not available'}`,
+      unnumbered: true
+    })
+  }
+
+  steps.push({
+    text: `Allowed Network IDs: ${
+      allowedIps.length > 0 ? allowedIps.join(', ') : 'Not configured'
+    }`,
+    unnumbered: true
+  })
+
+  return steps
+}
+
+function getNetworkIdDescription(
+  result: PolicyStatus,
+  networkIdIps: string,
+  networkIdInUse: string
+): string {
+  if (!networkIdInUse) {
+    return NETWORK_ID_UNKNOWN_MESSAGE
+  }
+
+  if (result !== PASS) {
+    return ''
+  }
+
+  return parseNetworkIdIps(networkIdIps).length > 0
+    ? 'Network ID matches an approved network.'
+    : NETWORK_ID_UNKNOWN_MESSAGE
 }
 
 function getFirewallDescriptionSteps(
@@ -743,6 +926,44 @@ function getRemoteLoginDescriptionSteps(
   return [
     {
       text: 'Open device sharing settings and disable remote login.'
+    }
+  ]
+}
+
+function getWindowsDefenderDescriptionSteps(
+  enabled: boolean | null
+): ScanElementDescriptionStep[] {
+  if (enabled === true) {
+    return [
+      {
+        unnumbered: true,
+        text: 'Click ',
+        linkText: 'here',
+        linkUrl: 'windowsdefender://threat',
+        suffix: ' to check other antivirus protection settings.'
+      }
+    ]
+  }
+
+  if (enabled == null) {
+    return [
+      {
+        unnumbered: true,
+        text: 'If you are using another antivirus program, please make sure it is actively running and providing real-time protection. Click ',
+        linkText: 'here',
+        linkUrl: 'windowsdefender://threat',
+        suffix: ' to open the Virus and threat protection settings.'
+      }
+    ]
+  }
+
+  return [
+    {
+      unnumbered: true,
+      text: 'Click ',
+      linkText: 'here',
+      linkUrl: 'windowsdefender://threatsettings/',
+      suffix: ' to turn on real-time protection.'
     }
   ]
 }
@@ -1066,23 +1287,194 @@ function getScreenLockDescriptionSteps(
   ]
 }
 
-function describeAppState(
-  prohibitedApps: string[],
-  missingCategories: string[]
+function getAppDetectionLookup(
+  detections: PolicyAppDetection[]
+): Map<string, AppDetectionStatus> {
+  return new Map(
+    detections.map((detection) => [
+      detection.policyAppName.toLowerCase(),
+      detection.status
+    ])
+  )
+}
+
+function getPolicyAppStatus(
+  detections: Map<string, AppDetectionStatus>,
+  policyAppName: string,
+  installedApps: string[]
+): AppDetectionStatus {
+  const detectedStatus = detections.get(policyAppName.toLowerCase())
+
+  if (detectedStatus) {
+    return detectedStatus
+  }
+
+  return installedApps.some(
+    (installedApp) => installedApp.toLowerCase() === policyAppName.toLowerCase()
+  )
+    ? 'installed'
+    : 'not-installed'
+}
+
+function isRequiredPolicyAppSatisfied(
+  detections: Map<string, AppDetectionStatus>,
+  policyAppName: string,
+  device: DeviceSnapshot
+): boolean {
+  const status = getPolicyAppStatus(
+    detections,
+    policyAppName,
+    device.installedApps
+  )
+
+  return status === 'installed' || status === 'unknown'
+}
+
+interface MissingRequiredAppsCategoryDetail {
+  requiredAppsCount: number
+  requiredApps: string[]
+  installedApps: string[]
+}
+
+function formatRequiredAppsRequirement(
+  requiredAppsCount: number,
+  requiredApps: string[]
 ): string {
-  if (prohibitedApps.length === 0 && missingCategories.length === 0) {
-    return 'Required application checks passed.'
+  if (requiredAppsCount === 1 && requiredApps.length === 1) {
+    return `You must install the application: ${requiredApps[0]}`
   }
+
+  return `You must install ${requiredAppsCount} of the applications: ${requiredApps.join(', ')}`
+}
+
+function formatInstalledAppsSummary(
+  installedApps: string[],
+  requiredApps: string[]
+): string {
+  if (installedApps.length === 0) {
+    return requiredApps.length === 1
+      ? 'It is not installed.'
+      : 'None is installed.'
+  }
+
+  if (installedApps.length === 1) {
+    return `Only 1 is installed: ${installedApps[0]}`
+  }
+
+  return `Only ${installedApps.length} are installed: ${installedApps.join(', ')}`
+}
+
+function getAppDescriptionSteps(
+  installedProhibitedApps: string[],
+  missingCategories: MissingRequiredAppsCategoryDetail[],
+  unknownProhibitedApps: string[],
+  unknownRequiredApps: string[]
+): ScanElementDescriptionStep[] {
+  const steps: ScanElementDescriptionStep[] = [
+    {
+      text: 'Prohibited Applications:',
+      secondaryText:
+        installedProhibitedApps.length > 0
+          ? ` ${installedProhibitedApps.length} prohibited ${
+              installedProhibitedApps.length === 1
+                ? 'application is'
+                : 'applications are'
+            } installed`
+          : ' No prohibited application is installed',
+      status: installedProhibitedApps.length > 0 ? FAIL : PASS,
+      unnumbered: true,
+      bold: true
+    }
+  ]
+
+  if (installedProhibitedApps.length > 0) {
+    steps.push({
+      unnumbered: true,
+      children: installedProhibitedApps.map((appName) => ({ text: appName }))
+    })
+  }
+
+  steps.push({
+    text: 'Required Applications:',
+    secondaryText:
+      missingCategories.length > 0
+        ? ' Some required applications are missing'
+        : ' No required applications are missing',
+    status: missingCategories.length > 0 ? FAIL : PASS,
+    unnumbered: true,
+    bold: true,
+    children: missingCategories.map((category) => ({
+      text: formatRequiredAppsRequirement(
+        category.requiredAppsCount,
+        category.requiredApps
+      ),
+      children: [
+        {
+          text: formatInstalledAppsSummary(
+            category.installedApps,
+            category.requiredApps
+          )
+        }
+      ]
+    }))
+  })
+
+  if (unknownProhibitedApps.length > 0) {
+    steps.push({
+      text: 'The applet could not determine whether the following prohibited applications are installed. Please make sure they are not installed:',
+      unnumbered: true,
+      children: unknownProhibitedApps.map((appName) => ({ text: appName }))
+    })
+  }
+
+  if (unknownRequiredApps.length > 0) {
+    steps.push({
+      text: 'The applet could not determine whether the following required applications are installed. Please make sure they are installed:',
+      unnumbered: true,
+      children: unknownRequiredApps.map((appName) => ({ text: appName }))
+    })
+  }
+
+  return steps
+}
+
+function describeAppSummary(
+  prohibitedApps: string[],
+  missingCategories: string[],
+  unknownProhibitedApps: string[] = [],
+  unknownRequiredApps: string[] = []
+): string {
+  if (prohibitedApps.length > 0 && missingCategories.length > 0) {
+    return 'There are applications installed which are prohibited. Also, some required applications are missing.'
+  }
+
   const parts: string[] = []
+
   if (prohibitedApps.length > 0) {
-    parts.push(`Installed prohibited apps: ${prohibitedApps.join(', ')}`)
+    parts.push('There are applications installed which are prohibited.')
   }
+
   if (missingCategories.length > 0) {
+    parts.push('Some required applications are missing.')
+  }
+
+  if (prohibitedApps.length === 0 && unknownProhibitedApps.length > 0) {
     parts.push(
-      `Missing required app categories: ${missingCategories.join(' | ')}`
+      'The applet could not determine whether some prohibited applications are installed.'
     )
   }
-  return parts.join('. ')
+
+  if (missingCategories.length === 0 && unknownRequiredApps.length > 0) {
+    parts.push(
+      'The applet could not determine whether some required applications are installed.'
+    )
+  }
+
+  if (parts.length === 0) {
+    return 'Application checks passed.'
+  }
+
+  return parts.join(' ')
 }
 
 function describeFirewallState(
@@ -1189,6 +1581,16 @@ function describeRemoteLoginState(device: DeviceSnapshot): string {
   return device.remoteLoginEnabled
     ? 'Remote Login is allowed.'
     : 'Remote Login is not allowed.'
+}
+
+function describeWindowsDefenderState(enabled: boolean | null): string {
+  if (enabled == null) {
+    return 'Antivirus is not currently providing real-time protection on your system.'
+  }
+
+  return enabled
+    ? 'Antivirus is currently providing real-time protection on your system.'
+    : 'Antivirus is not currently providing real-time protection on your system.'
 }
 
 function describeActiveWifiState(assessment: ActiveWifiAssessment): string {
@@ -1410,6 +1812,33 @@ function recommendRemoteLoginAction(
   }
 
   return 'Disable remote login unless explicitly required.'
+}
+
+function recommendWindowsDefenderAction(enabled: boolean | null): string {
+  if (enabled === true) {
+    return 'No action required.'
+  }
+
+  if (enabled == null) {
+    return 'If you are using another antivirus program, make sure it is actively running and providing real-time protection.'
+  }
+
+  return 'Open Virus & threat protection settings and turn on real-time protection.'
+}
+
+function recommendNetworkIdAction(
+  result: PolicyStatus,
+  networkIdInUse: string
+): string {
+  if (!networkIdInUse) {
+    return 'Check your internet connection, then run the scan again.'
+  }
+
+  if (result === PASS) {
+    return 'No action required.'
+  }
+
+  return 'Connect from an approved network.'
 }
 
 function recommendActiveWifiAction(

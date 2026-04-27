@@ -257,7 +257,77 @@ it('opens Screen Idle details without the recommended action footer', async () =
   )
 })
 
-it('shows recommended action for non-firewall scan rows', async () => {
+it('opens Antivirus details without the recommended action footer', async () => {
+  const user = userEvent.setup()
+  installDeviceWatch(
+    createResultsState({
+      currentScan: {
+        startedAt: '2026-04-12T02:14:58.500Z',
+        durationMs: 1500,
+        companyName: 'Example Advice',
+        result: {
+          status: PASS,
+          osVersion: PASS,
+          firewall: PASS,
+          diskEncryption: PASS,
+          winDefenderAV: PASS,
+          screenLock: PASS,
+          screenIdle: PASS,
+          automaticUpdates: PASS,
+          remoteLogin: PASS,
+          activeWifiNetwork: PASS,
+          knownWifiNetworks: PASS,
+          networkID: PASS,
+          networkIDInUse: '',
+          applications: PASS,
+          appsPolicyResult: {
+            appsScanResult: PASS,
+            installedProhibitedApps: [],
+            missingRequiredAppsCategories: []
+          },
+          elements: [
+            createScanElement({
+              key: 'winDefenderAV',
+              title: 'Antivirus',
+              status: PASS,
+              detail:
+                'Antivirus is currently providing real-time protection on your system.',
+              description:
+                'Real-time protection helps detect and block malware before it can install or run on your device.',
+              descriptionSteps: [
+                {
+                  unnumbered: true,
+                  text: 'Click ',
+                  linkText: 'here',
+                  linkUrl: 'windowsdefender://threat',
+                  suffix: ' to check other antivirus protection settings.'
+                }
+              ],
+              fixInstruction: 'No action required.'
+            })
+          ]
+        }
+      }
+    })
+  )
+
+  render(<App />)
+
+  const antivirusRow = await screen.findByRole('button', {
+    name: /antivirus/i
+  })
+
+  await user.click(antivirusRow)
+
+  expect(screen.queryByText('Recommended action')).not.toBeInTheDocument()
+  expect(screen.queryByRole('list')).not.toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'here' })).toHaveAttribute(
+    'href',
+    'windowsdefender://threat'
+  )
+})
+
+it('opens Applications details without the recommended action footer', async () => {
   const user = userEvent.setup()
   installDeviceWatch(createResultsState())
 
@@ -269,10 +339,236 @@ it('shows recommended action for non-firewall scan rows', async () => {
 
   await user.click(applicationsRow)
 
-  expect(screen.getByText('Recommended action')).toBeInTheDocument()
+  expect(screen.queryByText('Recommended action')).not.toBeInTheDocument()
   expect(
-    screen.getByText('Install an approved password manager.')
+    screen.queryByText('Install an approved password manager.')
+  ).not.toBeInTheDocument()
+  expect(
+    screen.getByText('Required security applications help protect the device.')
   ).toBeInTheDocument()
+})
+
+it('groups missing required application categories in the Applications details', async () => {
+  const user = userEvent.setup()
+  installDeviceWatch(
+    createResultsState({
+      currentScan: {
+        startedAt: '2026-04-12T02:14:58.500Z',
+        durationMs: 1500,
+        companyName: 'Example Advice',
+        result: {
+          status: FAIL,
+          osVersion: PASS,
+          firewall: PASS,
+          diskEncryption: PASS,
+          winDefenderAV: PASS,
+          screenLock: PASS,
+          screenIdle: PASS,
+          automaticUpdates: PASS,
+          remoteLogin: PASS,
+          activeWifiNetwork: PASS,
+          knownWifiNetworks: PASS,
+          networkID: PASS,
+          networkIDInUse: '',
+          applications: FAIL,
+          appsPolicyResult: {
+            appsScanResult: FAIL,
+            installedProhibitedApps: [],
+            missingRequiredAppsCategories: ['Bitdefender, Avast']
+          },
+          elements: [
+            createScanElement({
+              key: 'applications',
+              title: 'Applications',
+              status: FAIL,
+              detail: 'Some required applications are missing.',
+              description: '',
+              descriptionSteps: [
+                {
+                  text: 'Required Applications:',
+                  secondaryText: ' Some required applications are missing',
+                  status: FAIL,
+                  unnumbered: true,
+                  bold: true,
+                  children: [
+                    {
+                      text: 'You must install 2 of the applications: Bitdefender, Avast',
+                      children: [{ text: 'Only 1 is installed: Bitdefender' }]
+                    },
+                    {
+                      text: 'You must install the application: AdvisorArmor2',
+                      children: [{ text: 'It is not installed.' }]
+                    }
+                  ]
+                }
+              ],
+              fixInstruction: ''
+            })
+          ]
+        }
+      }
+    })
+  )
+
+  render(<App />)
+
+  const applicationsRow = await screen.findByRole('button', {
+    name: /applications/i
+  })
+
+  await user.click(applicationsRow)
+
+  expect(
+    screen.getByText(
+      'You must install 2 of the applications: Bitdefender, Avast'
+    )
+  ).toBeInTheDocument()
+  expect(
+    screen.getByText('Only 1 is installed: Bitdefender')
+  ).toBeInTheDocument()
+  expect(
+    screen.getByText('You must install the application: AdvisorArmor2')
+  ).toBeInTheDocument()
+  expect(screen.getByText('It is not installed.')).toBeInTheDocument()
+})
+
+it('renders Applications details compactly when the description is empty', async () => {
+  const user = userEvent.setup()
+  installDeviceWatch(
+    createResultsState({
+      currentScan: {
+        startedAt: '2026-04-12T02:14:58.500Z',
+        durationMs: 1500,
+        companyName: 'Example Advice',
+        result: {
+          status: FAIL,
+          osVersion: PASS,
+          firewall: PASS,
+          diskEncryption: PASS,
+          winDefenderAV: PASS,
+          screenLock: PASS,
+          screenIdle: PASS,
+          automaticUpdates: PASS,
+          remoteLogin: PASS,
+          activeWifiNetwork: PASS,
+          knownWifiNetworks: PASS,
+          networkID: PASS,
+          networkIDInUse: '',
+          applications: FAIL,
+          appsPolicyResult: {
+            appsScanResult: FAIL,
+            installedProhibitedApps: ['ChatGPT'],
+            missingRequiredAppsCategories: []
+          },
+          elements: [
+            createScanElement({
+              key: 'applications',
+              title: 'Applications',
+              status: FAIL,
+              detail: 'There are applications installed which are prohibited.',
+              description: '',
+              descriptionSteps: [
+                {
+                  text: 'Prohibited Applications:',
+                  secondaryText: ' 1 prohibited application is installed',
+                  status: FAIL,
+                  unnumbered: true,
+                  bold: true,
+                  children: [{ text: 'ChatGPT' }]
+                }
+              ],
+              fixInstruction: ''
+            })
+          ]
+        }
+      }
+    })
+  )
+
+  const { container } = render(<App />)
+
+  const applicationsRow = await screen.findByRole('button', {
+    name: /applications/i
+  })
+
+  await user.click(applicationsRow)
+
+  const detailPanel = container.querySelector('.border-t.border-slate-100')
+  const emptyParagraph = detailPanel?.querySelector('p:empty')
+
+  expect(detailPanel).not.toBeNull()
+  expect(emptyParagraph).toBeNull()
+  expect(screen.getByText('Prohibited Applications:')).toBeInTheDocument()
+})
+
+it('renders Applications summary text in normal body color while keeping the status icon colored', async () => {
+  const user = userEvent.setup()
+  installDeviceWatch(
+    createResultsState({
+      currentScan: {
+        startedAt: '2026-04-12T02:14:58.500Z',
+        durationMs: 1500,
+        companyName: 'Example Advice',
+        result: {
+          status: FAIL,
+          osVersion: PASS,
+          firewall: PASS,
+          diskEncryption: PASS,
+          winDefenderAV: PASS,
+          screenLock: PASS,
+          screenIdle: PASS,
+          automaticUpdates: PASS,
+          remoteLogin: PASS,
+          activeWifiNetwork: PASS,
+          knownWifiNetworks: PASS,
+          networkID: PASS,
+          networkIDInUse: '',
+          applications: FAIL,
+          appsPolicyResult: {
+            appsScanResult: FAIL,
+            installedProhibitedApps: [],
+            missingRequiredAppsCategories: ['Bitdefender, Avast']
+          },
+          elements: [
+            createScanElement({
+              key: 'applications',
+              title: 'Applications',
+              status: FAIL,
+              detail: 'Some required applications are missing.',
+              description: '',
+              descriptionSteps: [
+                {
+                  text: 'Required Applications:',
+                  secondaryText: ' Some required applications are missing',
+                  status: FAIL,
+                  unnumbered: true,
+                  bold: true
+                }
+              ],
+              fixInstruction: ''
+            })
+          ]
+        }
+      }
+    })
+  )
+
+  render(<App />)
+
+  const applicationsRow = await screen.findByRole('button', {
+    name: /applications/i
+  })
+
+  await user.click(applicationsRow)
+
+  const secondaryText = screen.getByText((content, element) => {
+    return (
+      element?.tagName.toLowerCase() === 'span' &&
+      content.trim() === 'Some required applications are missing'
+    )
+  })
+  expect(secondaryText).toHaveClass('text-slate-600')
+  expect(secondaryText).not.toHaveClass('text-danger')
 })
 
 it('opens disk encryption settings from a scan row action', async () => {
