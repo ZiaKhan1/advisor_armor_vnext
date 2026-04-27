@@ -73,9 +73,10 @@ created: 2026-04-05
 
 - **Policy field:** `ScreenIdleMac`
 - **Valid policy values:** Integer ≥ 1 (seconds). Invalid = N/A = PASS
-- **Device setting:** Never, or a duration in seconds
+- **Device setting:** Never, unknown, or a duration in seconds
 - **Logic:**
   - Invalid policy → **PASS** (N/A)
+  - Device setting unknown / cannot be read → **PASS**
   - Device = Never → **FAIL**
   - Device value > policy value → **FAIL**
   - Device value ≤ policy value → **PASS**
@@ -89,6 +90,7 @@ created: 2026-04-05
 - **Valid policy values:** Integer ≥ 0 (seconds). 0 = Immediately. Invalid = N/A = PASS
 - **Logic:**
   - Invalid policy → **PASS** (N/A, shown in UI as N/A)
+  - Device setting unknown / cannot be read → **PASS**
   - Policy = 0 (Immediately):
     - Device = Immediately → **PASS**
     - Device = anything else (including Never) → **FAIL**
@@ -103,12 +105,15 @@ created: 2026-04-05
 ### 9. Screen Idle — Windows
 
 - **Policy field:** `ScreenIdleWindows`
-- **Device setting:** Screen Saver wait time in minutes (always a numeric value, no "Never" option)
+- **Device setting:** Screen Saver wait time in seconds, Never/disabled, or unknown
 - **Valid policy values:** Integer ≥ 1 (seconds). Invalid (0, negative, text, empty) = N/A = PASS
 - **Logic:**
   - Invalid policy → **PASS** (N/A)
+  - Device setting unknown / cannot be read → **PASS**
+  - Device = Never / disabled screen saver → **FAIL**
   - Device wait time > policy value → **FAIL**
   - Device wait time ≤ policy value → **PASS**
+- **Old-app parity note:** Older notes described a distinct Windows "Not Set" state that failed for a valid policy. v1 intentionally treats unreadable/null settings as unknown and pass-safe.
 - **Result:** PASS/FAIL only (no NUDGE)
 - **Platforms:** Windows only
 
@@ -119,6 +124,7 @@ created: 2026-04-05
 - **Valid policy values:** 0 or 1 only. Anything else = N/A = PASS
 - **Logic:**
   - Invalid policy → **PASS** (N/A)
+  - Device setting unknown / cannot be read → **PASS**
   - Policy = 1 (logon required):
     - Option selected on device → **PASS**
     - Option not selected → **FAIL**
@@ -182,7 +188,8 @@ created: 2026-04-05
   - Any prohibited app found → always **FAIL** (no configurable policy action)
   - No prohibited apps found → **PASS**
 - **Unknown:** If app detection errors or cannot determine state, treat the prohibited app as not installed so the user is not penalised. Show advisory text asking the user to make sure the prohibited app is not installed.
-- **App detection:** Policy-targeted lookup. Mac uses Spotlight `mdfind`; Windows uses `Get-StartApps`.
+- **App detection:** Policy-targeted lookup by app name. Mac uses Spotlight `mdfind`; Windows uses `Get-StartApps`.
+- **Path handling:** Mac policy entries may include an optional parent-path suffix such as `/Bitdefender/Antivirus for Mac`; Windows policy entries with folder paths are treated as not installed. See `docs/architecture/scan-implementation.md` for details and examples.
 - **Platforms:** Mac, Windows (separate lists)
 - **Special case:** If `AppPolicy` is `"No matching policy found"` (string) → skip this check
 
@@ -194,6 +201,7 @@ created: 2026-04-05
   - Number of installed apps from list ≥ `requiredAppsCount` → **PASS**
   - Number of installed apps from list < `requiredAppsCount` → **FAIL**
 - **Unknown:** If app detection errors or cannot determine state, count the required app as satisfying the requirement so the user is not penalised. Show advisory text asking the user to make sure the required app is installed.
-- **App detection:** Policy-targeted lookup. Mac uses Spotlight `mdfind`; Windows uses `Get-StartApps`.
+- **App detection:** Policy-targeted lookup by app name. Mac uses Spotlight `mdfind`; Windows uses `Get-StartApps`.
+- **Path handling:** Mac policy entries may include an optional parent-path suffix such as `/Bitdefender/Antivirus for Mac`; Windows policy entries with folder paths are treated as not installed. See `docs/architecture/scan-implementation.md` for details and examples.
 - **Platforms:** Mac, Windows (separate lists)
 - **Special case:** If `AppPolicy` is `"No matching policy found"` (string) → skip this check
