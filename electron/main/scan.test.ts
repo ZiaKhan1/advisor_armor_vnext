@@ -1859,6 +1859,76 @@ describe('evaluateDevice Applications result', () => {
     })
   })
 
+  it('counts unknown required apps toward the category requirement while still showing advisory text', () => {
+    const result = evaluateDevice(
+      createDevice({
+        appDetections: [
+          {
+            policyAppName: 'Bitdefender',
+            folderPath: '',
+            appName: 'Bitdefender',
+            status: 'installed'
+          },
+          {
+            policyAppName: '1Password',
+            folderPath: '',
+            appName: '1Password',
+            status: 'unknown'
+          },
+          {
+            policyAppName: 'Avast',
+            folderPath: '',
+            appName: 'Avast',
+            status: 'not-installed'
+          }
+        ]
+      }),
+      createPolicy({
+        appsPolicy: {
+          prohibitedApps: [],
+          requiredAppsCategories: [
+            {
+              apps: ['Bitdefender', '1Password', 'Avast'],
+              requiredAppsCount: 2
+            }
+          ]
+        }
+      })
+    )
+
+    const applications = result.elements.find(
+      (item) => item.key === 'applications'
+    )
+
+    expect(result.applications).toBe(PASS)
+    expect(result.appsPolicyResult).toMatchObject({
+      appsScanResult: PASS,
+      installedProhibitedApps: [],
+      missingRequiredAppsCategories: []
+    })
+    expect(applications).toMatchObject({
+      status: PASS,
+      detail:
+        'The applet could not determine whether some required applications are installed.',
+      descriptionSteps: [
+        {
+          text: 'Prohibited Applications:',
+          secondaryText: ' No prohibited application is installed',
+          status: PASS
+        },
+        {
+          text: 'Required Applications:',
+          secondaryText: ' No required applications are missing',
+          status: PASS
+        },
+        {
+          text: 'The applet could not determine whether the following required applications are installed. Please make sure they are installed:',
+          children: [{ text: '1Password' }]
+        }
+      ]
+    })
+  })
+
   it('uses a combined short summary when both prohibited and required issues exist', () => {
     const result = evaluateDevice(
       createDevice({

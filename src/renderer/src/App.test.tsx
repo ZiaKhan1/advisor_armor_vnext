@@ -501,6 +501,76 @@ it('renders Applications details compactly when the description is empty', async
   expect(screen.getByText('Prohibited Applications:')).toBeInTheDocument()
 })
 
+it('renders Applications summary text in normal body color while keeping the status icon colored', async () => {
+  const user = userEvent.setup()
+  installDeviceWatch(
+    createResultsState({
+      currentScan: {
+        startedAt: '2026-04-12T02:14:58.500Z',
+        durationMs: 1500,
+        companyName: 'Example Advice',
+        result: {
+          status: FAIL,
+          osVersion: PASS,
+          firewall: PASS,
+          diskEncryption: PASS,
+          winDefenderAV: PASS,
+          screenLock: PASS,
+          screenIdle: PASS,
+          automaticUpdates: PASS,
+          remoteLogin: PASS,
+          activeWifiNetwork: PASS,
+          knownWifiNetworks: PASS,
+          networkID: PASS,
+          networkIDInUse: '',
+          applications: FAIL,
+          appsPolicyResult: {
+            appsScanResult: FAIL,
+            installedProhibitedApps: [],
+            missingRequiredAppsCategories: ['Bitdefender, Avast']
+          },
+          elements: [
+            createScanElement({
+              key: 'applications',
+              title: 'Applications',
+              status: FAIL,
+              detail: 'Some required applications are missing.',
+              description: '',
+              descriptionSteps: [
+                {
+                  text: 'Required Applications:',
+                  secondaryText: ' Some required applications are missing',
+                  status: FAIL,
+                  unnumbered: true,
+                  bold: true
+                }
+              ],
+              fixInstruction: ''
+            })
+          ]
+        }
+      }
+    })
+  )
+
+  render(<App />)
+
+  const applicationsRow = await screen.findByRole('button', {
+    name: /applications/i
+  })
+
+  await user.click(applicationsRow)
+
+  const secondaryText = screen.getByText((content, element) => {
+    return (
+      element?.tagName.toLowerCase() === 'span' &&
+      content.trim() === 'Some required applications are missing'
+    )
+  })
+  expect(secondaryText).toHaveClass('text-slate-600')
+  expect(secondaryText).not.toHaveClass('text-danger')
+})
+
 it('opens disk encryption settings from a scan row action', async () => {
   const user = userEvent.setup()
   const api = installDeviceWatch(

@@ -262,7 +262,7 @@ function createMockBackend(): BackendApi {
     AppPolicy: {
       companyName: 'Demo Company',
       macPolicy: {
-        prohibitedApps: [{ AppName: 'ChatGPT2' }, { AppName: 'AdvisorArmor2' }],
+        prohibitedApps: [{ AppName: 'ChatGPT' }, { AppName: 'AdvisorArmor2' }],
         requiredAppsCategories: [
           {
             apps: [{ AppName: 'Bitdefender' }, { AppName: 'Avast Security' }],

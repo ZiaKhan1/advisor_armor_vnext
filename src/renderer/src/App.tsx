@@ -637,7 +637,9 @@ function DescriptionStepContent({
       ) : null}
       {step.text}
       {step.secondaryText ? (
-        <span className={step.bold ? 'font-normal' : undefined}>
+        <span
+          className={`text-slate-600 ${step.bold ? 'font-normal' : ''}`.trim()}
+        >
           {step.secondaryText}
         </span>
       ) : null}

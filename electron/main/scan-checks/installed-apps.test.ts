@@ -118,6 +118,23 @@ describe('readPolicyAppDetections', () => {
     ).resolves.toMatchObject([{ status: 'unknown' }])
   })
 
+  it('escapes apostrophes in macOS Spotlight queries', async () => {
+    commandRunnerMocks.runCommand.mockResolvedValue({
+      ok: true,
+      stdout: "/Applications/O'Reilly Defender.app",
+      stderr: ''
+    })
+
+    await readPolicyAppDetections('darwin', {
+      prohibitedApps: ["O'Reilly Defender"],
+      requiredAppsCategories: []
+    })
+
+    expect(commandRunnerMocks.runCommand).toHaveBeenCalledWith('mdfind', [
+      "kMDItemKind == 'Application' && kMDItemDisplayName == 'O\\'Reilly Defender'c"
+    ])
+  })
+
   it('uses Get-StartApps on Windows and does not support folder paths', async () => {
     commandRunnerMocks.runCommand.mockResolvedValue({
       ok: true,
@@ -169,5 +186,57 @@ describe('readPolicyAppDetections', () => {
         requiredAppsCategories: []
       })
     ).resolves.toMatchObject([{ status: 'unknown' }])
+  })
+
+  it('escapes apostrophes in Windows PowerShell queries', async () => {
+    commandRunnerMocks.runCommand.mockResolvedValue({
+      ok: true,
+      stdout: "O'Reilly Defender",
+      stderr: ''
+    })
+
+    await readPolicyAppDetections('win32', {
+      prohibitedApps: ["O'Reilly Defender"],
+      requiredAppsCategories: []
+    })
+
+    expect(commandRunnerMocks.runCommand).toHaveBeenCalledWith(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        "(Get-StartApps | Where-Object {$_.Name -eq 'O''Reilly Defender'}).Name"
+      ]
+    )
+  })
+
+  it('deduplicates policy app checks case-insensitively across prohibited and required apps', async () => {
+    commandRunnerMocks.runCommand.mockResolvedValue({
+      ok: true,
+      stdout: '/Applications/ChatGPT.app',
+      stderr: ''
+    })
+
+    await expect(
+      readPolicyAppDetections('darwin', {
+        prohibitedApps: ['ChatGPT'],
+        requiredAppsCategories: [
+          {
+            apps: ['chatgpt', 'CHATGPT'],
+            requiredAppsCount: 1
+          }
+        ]
+      })
+    ).resolves.toEqual([
+      {
+        policyAppName: 'ChatGPT',
+        folderPath: '',
+        appName: 'ChatGPT',
+        status: 'installed'
+      }
+    ])
+
+    expect(commandRunnerMocks.runCommand).toHaveBeenCalledTimes(1)
   })
 })
